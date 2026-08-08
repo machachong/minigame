@@ -1,0 +1,13 @@
+# 依赖
+node_modules/
+
+# TS 编译产物(由 src 生成,不入库)
+mind_tap/game/dist/
+
+# 工作区内部数据
+.workbuddy/
+
+# 系统/日志
+*.log
+.DS_Store
+Thumbs.db

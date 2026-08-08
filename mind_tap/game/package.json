@@ -1,0 +1,14 @@
+{
+  "name": "kxcf-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "敲到成佛 - 微信小游戏(木鱼解压 + 佛系修仙)",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -w -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
