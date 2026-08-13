@@ -56,7 +56,7 @@
 | 2 | 数据库 → 创建集合 | `users`、`profiles`、`events` |
 | 3 | 数据库 → 权限设置 | 所有集合设为**"仅创建者可读写"**(云函数用管理员权限) |
 | 4 | 数据库 → 索引 | `profiles`:按 `_openid` 唯一索引 + 按 `merit` 倒序索引 |
-| 5 | 云函数 → 上传 | 逐个上传 login/syncProfile/offlineCalc/dailyClaim/rank |
+| 5 | 云函数 → 上传 | 逐个上传 login/syncProfile/offlineCalc/dailyClaim(rank 可选,当前开放数据域直读好友榜,无需该云函数) |
 
 ### 2.3 开发者工具初始化
 
@@ -366,7 +366,7 @@ Day 4: 全量
 | 1 | `project.config.json` 中 appid 正确 | ☐ |
 | 2 | `game.json` 中 `"deviceOrientation":"portrait"` | ☐ |
 | 3 | 云开发环境 ID 已配置且为正式环境 | ☐ |
-| 4 | 云函数已全部部署(login/syncProfile/offlineCalc/dailyClaim/rank) | ☐ |
+| 4 | 云函数已全部部署(login/syncProfile/offlineCalc/dailyClaim;rank 可选) | ☐ |
 | 5 | 数据库集合已创建(users/profiles/events),权限已设定 | ☐ |
 | 6 | 数据库索引已创建(profiles._openid, profiles.merit) | ☐ |
 | 7 | `project.config.json` 中 `"packOptions.ignore"` 排除 spec/docs 等文档目录 | ☐ |

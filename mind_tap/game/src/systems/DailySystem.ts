@@ -16,8 +16,7 @@ export class DailySystem {
     const save = this.game.save;
     const today = todayKey();
     if (save.daily.dateKey !== today) {
-      // 连续天数:昨天完成过才 +1,否则断签
-      const yesterday = todayKey() === save.daily.dateKey; // 占位,精确逻辑在云端
+      // 连续天数:昨天完成过才 +1,否则断签(精确逻辑以云端 dailyClaim 为准)
       save.daily = {
         dateKey: today,
         taps: 0,
@@ -70,12 +69,15 @@ export class DailySystem {
     }
 
     try {
+      // 先强制上报当日 taps,确保云端累计 ≥ 目标后再领奖
+      await this.game.sync.flush();
       const res = await wx.cloud.callFunction({ name: 'dailyClaim', data: {} });
       const r = res.result || {};
       if (r.ok) {
         save.daily.claimed = true;
         save.daily.streak = r.streak || save.daily.streak + 1;
-        this.game.merit.addMerit(r.reward, 'daily');
+        // 云端已入账,本地仅镜像,避免双倍
+        this.game.merit.applyCloudReward(r.reward, 'daily');
         bus.emit(Events.DAILY_CLAIMED, { reward: r.reward, streak: save.daily.streak });
         this.game.saveManager.markDirty();
         return { ok: true, reward: r.reward, streak: save.daily.streak };
@@ -101,7 +103,8 @@ export class DailySystem {
       const r = res.result || {};
       if (r.ok) {
         save.daily.shareMeritClaimed = true;
-        this.game.merit.addMerit(r.reward || 100, 'share');
+        // 云端已入账,本地仅镜像,避免双倍
+        this.game.merit.applyCloudReward(r.reward || 100, 'share');
         this.game.saveManager.markDirty();
         return true;
       }

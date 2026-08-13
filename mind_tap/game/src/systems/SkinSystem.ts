@@ -11,6 +11,12 @@ export class SkinSystem {
   }
 
   get currentSkin(): SkinConfig {
+    // 皮肤试用(看广告解锁的限时试用)优先
+    const trial = this.game.save.extra.skinTrial as { id?: string; until?: number } | undefined;
+    if (trial && trial.id && trial.until && trial.until > Date.now()) {
+      const trialSkin = SKINS.find((s) => s.id === trial.id);
+      if (trialSkin) return trialSkin;
+    }
     return SKINS.find((s) => s.id === this.game.save.skinId) || SKINS[0];
   }
 
@@ -20,6 +26,16 @@ export class SkinSystem {
 
   isSkinUnlocked(id: string): boolean {
     return this.game.save.inventory.skins.includes(id);
+  }
+
+  /** 皮肤试用(激励视频解锁,限时 30 分钟) */
+  trialSkin(id: string, minutes = 30): boolean {
+    const skin = SKINS.find((s) => s.id === id);
+    if (!skin) return false;
+    this.game.save.extra.skinTrial = { id, until: Date.now() + minutes * 60000 };
+    this.game.saveManager.markDirty();
+    bus.emit(Events.SKIN_CHANGED, { id });
+    return true;
   }
 
   isSceneUnlocked(id: string): boolean {

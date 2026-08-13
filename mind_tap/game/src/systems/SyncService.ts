@@ -65,23 +65,25 @@ export class SyncService {
     }
   }
 
-  /** 云端 → 本地合并:本地新数据优先,云端补缺失字段 */
+  /** 云端 → 本地合并:字段级合并(本地未同步增量 ∪ 云端),数值取 max 保证多设备收敛 */
   private mergeFromCloud(profile: any): void {
     if (!profile) return;
     const save = this.game.save;
-    const localNewer = save.pendingTaps > 0 || save.lastSeenAt > (profile.lastSyncAt || 0);
-
-    if (!localNewer) {
-      // 云端权威:覆盖数值与库存(保留本地未同步的 daily 状态)
-      save.merit = Math.max(save.merit, profile.merit || 0);
-      save.totalTaps = Math.max(save.totalTaps, profile.totalTaps || 0);
-      if (profile.inventory) {
-        save.inventory.skins = Array.from(new Set([...save.inventory.skins, ...(profile.inventory.skins || [])]));
-        save.inventory.scenes = Array.from(new Set([...save.inventory.scenes, ...(profile.inventory.scenes || [])]));
-        save.inventory.bgms = Array.from(new Set([...save.inventory.bgms, ...(profile.inventory.bgms || [])]));
-      }
-      if (profile.skinId && save.inventory.skins.includes(profile.skinId)) save.skinId = profile.skinId;
-      if (profile.sceneId && save.inventory.scenes.includes(profile.sceneId)) save.sceneId = profile.sceneId;
+    // 数值:本地已含 pending 增量,云端是已同步权威 → 取 max 不缩水
+    save.merit = Math.max(save.merit, profile.merit || 0);
+    save.totalTaps = Math.max(save.totalTaps, profile.totalTaps || 0);
+    // 库存:永远取并集(另一台设备解锁的内容要能同步过来)
+    if (profile.inventory) {
+      save.inventory.skins = Array.from(new Set([...save.inventory.skins, ...(profile.inventory.skins || [])]));
+      save.inventory.scenes = Array.from(new Set([...save.inventory.scenes, ...(profile.inventory.scenes || [])]));
+      save.inventory.bgms = Array.from(new Set([...save.inventory.bgms, ...(profile.inventory.bgms || [])]));
+    }
+    // 装备:本地装备失效时回退云端(仅当云端装备在本地库存内)
+    if (!save.inventory.skins.includes(save.skinId) && profile.skinId && save.inventory.skins.includes(profile.skinId)) {
+      save.skinId = profile.skinId;
+    }
+    if (!save.inventory.scenes.includes(save.sceneId) && profile.sceneId && save.inventory.scenes.includes(profile.sceneId)) {
+      save.sceneId = profile.sceneId;
     }
     // 本地有增量 → 由 flush 上报;云端数据由服务端累加
     save.lastSyncAt = Date.now();
@@ -135,6 +137,7 @@ export class SyncService {
             bgmId: save.bgmId,
             soundOn: save.soundOn,
             vibrateOn: save.vibrateOn,
+            tapSound: save.tapSound,
             inventory: save.inventory,
           },
         },
@@ -183,7 +186,8 @@ export class SyncService {
       });
       const r = res.result || {};
       if (r.ok) {
-        this.game.merit.addMerit(r.merit, 'offline');
+        // 云端已入账,本地仅镜像,避免双倍
+        this.game.merit.applyCloudReward(r.merit, 'offline');
         this.game.save.offlineClaimedAt = Date.now();
         return r.merit;
       }

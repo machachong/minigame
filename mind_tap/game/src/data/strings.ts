@@ -38,6 +38,12 @@ export const STRINGS = {
   meritUnit: '功德',
 
   confirmClear: '清除本地数据将丢失未同步进度,确定吗?',
+
+  tapSoundLabel: '木鱼音色',
+  tapSoundResonant: '腔体共鸣',
+  tapSoundWooden: '木质敲击',
+  tapSoundCrisp: '清脆实木',
+  tapSoundThump: '咚咚木鱼',
 };
 
 // 连击里程碑文案

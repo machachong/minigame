@@ -1,4 +1,5 @@
 // 每日功课领奖 + 分享得功德(每日一次,防刷)
+// 防刷:功课 taps 只能由 syncProfile 累计(服务端权威),客户端不可直接传值绕过
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -40,11 +41,11 @@ exports.main = async (event) => {
     return { ok: true, reward: SHARE_REWARD };
   }
 
-  // 每日功课宝箱
+  // 每日功课宝箱:必须先敲满 100 且由 syncProfile 累计到云端
   if (daily.dateKey === today && daily.claimed) {
     return { ok: false, err: 'already_claimed' };
   }
-  if ((daily.taps || 0) < DAILY_GOAL && daily.dateKey === today) {
+  if (daily.dateKey !== today || (daily.taps || 0) < DAILY_GOAL) {
     return { ok: false, err: 'not_enough_taps' };
   }
 

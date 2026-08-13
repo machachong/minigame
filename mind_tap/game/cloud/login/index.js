@@ -11,6 +11,7 @@ const DEFAULT_PROFILE = {
   bgmId: 'none',
   soundOn: true,
   vibrateOn: true,
+  tapSound: 'resonant',
   inventory: { skins: ['classic_wood'], scenes: ['temple'], bgms: [] },
   daily: { dateKey: '', taps: 0, claimed: false, streak: 0, shareMeritClaimed: false, adWatch: {} },
   lastSeenAt: null,

@@ -24,10 +24,10 @@ export class GameLoop {
     if (dt > 100) dt = 100; // 切后台回来避免大步长跳变
 
     if (this.lowFpsMode) {
-      // 30fps:攒够 33ms 才跑一帧
+      // 30fps:攒够 33ms 才跑一帧;dt 钳制到 100ms 避免动画跳变
       this.accumulator += dt;
       if (this.accumulator >= 33) {
-        this.cb?.(this.accumulator);
+        this.cb?.(Math.min(this.accumulator, 100));
         this.accumulator = 0;
       }
     } else {

@@ -104,12 +104,20 @@ export class RankScene extends Scene {
       28, myY + 24
     );
 
-    // 排行榜区域(sharedCanvas)
+    // 排行榜区域(sharedCanvas,开放域已按传入尺寸+dpr 渲染,主域等比缩放防拉伸)
     const listY = myY + 64;
     const listH = height - listY - 40;
     if (this.sharedCanvas && !this.loading) {
-      // 把开放域画布绘制到主 canvas
-      ctx.drawImage(this.sharedCanvas, 16, listY, width - 32, listH);
+      const cw = this.sharedCanvas.width || 1;
+      const ch = this.sharedCanvas.height || 1;
+      const availW = width - 32;
+      const scale = Math.min(availW / cw, listH / ch);
+      const dw = cw * scale;
+      const dh = ch * scale;
+      // 背景
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(16, listY, availW, listH);
+      ctx.drawImage(this.sharedCanvas, 16 + (availW - dw) / 2, listY + (listH - dh) / 2, dw, dh);
     } else {
       ctx.fillStyle = '#9A8F74';
       ctx.font = '14px sans-serif';

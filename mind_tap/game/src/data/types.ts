@@ -23,6 +23,7 @@ export interface SaveData {
   bgmId: string;
   soundOn: boolean;
   vibrateOn: boolean;
+  tapSound: string;         // 木鱼音色: 'resonant'(腔体共振) | 'wooden'(木质敲击) | 'crisp'(清脆实木) | 'thump'(咚咚木鱼)
   inventory: Inventory;
   daily: DailyState;
   lastSeenAt: number;       // 上次离开时间戳(ms)
@@ -35,7 +36,7 @@ export interface SaveData {
   extra: Record<string, any>; // 二期扩展位(功法/舍利子/事件)
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function createDefaultSave(): SaveData {
   const now = Date.now();
@@ -48,6 +49,7 @@ export function createDefaultSave(): SaveData {
     bgmId: 'none',
     soundOn: true,
     vibrateOn: true,
+    tapSound: 'resonant',
     inventory: { skins: ['classic_wood'], scenes: ['temple'], bgms: [] },
     daily: {
       dateKey: '',

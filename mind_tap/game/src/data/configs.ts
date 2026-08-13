@@ -26,7 +26,7 @@ export interface SkinConfig {
   name: string;
   bonus: number;          // 功德加成 0.05 = +5%
   unlockLevel: number;    // 解锁所需境界 index
-  // 音色
+  // 音色(真实木鱼合成参数:基频 420~650Hz,木质腔体共振)
   freq: number;           // 基频 Hz
   decay: number;          // 衰减秒
   wave: OscillatorType;
@@ -40,17 +40,17 @@ export interface SkinConfig {
 export const SKINS: SkinConfig[] = [
   {
     id: 'classic_wood', name: '经典木色', bonus: 0, unlockLevel: 0,
-    freq: 180, decay: 0.28, wave: 'sine',
+    freq: 480, decay: 0.32, wave: 'sine',
     body: '#8B5A2B', bodyDark: '#5D3A1A', highlight: '#C89B6D', mouth: '#3A2410',
   },
   {
     id: 'sandalwood', name: '檀木', bonus: 0.05, unlockLevel: 1,
-    freq: 145, decay: 0.34, wave: 'sine',
+    freq: 400, decay: 0.38, wave: 'sine',
     body: '#6B3A2A', bodyDark: '#452216', highlight: '#A67B5B', mouth: '#2E160C',
   },
   {
     id: 'jade', name: '冰种翡翠', bonus: 0.1, unlockLevel: 2,
-    freq: 255, decay: 0.22, wave: 'triangle',
+    freq: 620, decay: 0.26, wave: 'sine',
     body: '#5FA98A', bodyDark: '#3A7A60', highlight: '#A8D8C0', mouth: '#24503C',
   },
 ];

@@ -4,8 +4,7 @@ import type { Game } from '../Game';
 
 export class ShareSystem {
   private game: Game;
-  /** 分享成功后的功德回调(由 scene 注册) */
-  onShareSuccess: (() => void) | null = null;
+  private cardCanvas: any = null; // 复用离屏 canvas,避免每次分享新建泄漏
 
   constructor(game: Game) {
     this.game = game;
@@ -43,10 +42,11 @@ export class ShareSystem {
     };
   }
 
-  /** Canvas 离屏绘制分享卡(5:4) */
+  /** Canvas 离屏绘制分享卡(5:4),复用画布 */
   private renderShareCard(): string {
     try {
-      const canvas = wx.createCanvas();
+      if (!this.cardCanvas) this.cardCanvas = wx.createCanvas();
+      const canvas = this.cardCanvas;
       const W = 500;
       const H = 400;
       canvas.width = W;
@@ -110,7 +110,6 @@ export class ShareSystem {
   private handleShared(): void {
     this.game.daily.claimShareMerit().then((ok) => {
       if (ok) this.game.toast.show('分享成功,功德 +100');
-      this.onShareSuccess?.();
     });
   }
 }

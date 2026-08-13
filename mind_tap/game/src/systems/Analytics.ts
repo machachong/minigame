@@ -16,6 +16,12 @@ export class Analytics {
 
   constructor(game: Game) {
     this.game = game;
+  }
+
+  /** 启动定时上报(可在 onShow 重建) */
+  init(): void {
+    if (this.timer) return;
+    this.sessionStart = Date.now();
     this.timer = setInterval(() => this.flush(), 30000);
   }
 
@@ -53,6 +59,9 @@ export class Analytics {
   }
 
   destroy(): void {
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
   }
 }

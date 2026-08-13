@@ -50,6 +50,7 @@ export class HomeScene extends Scene {
   // 弹层
   private showOffline = false;
   private offlineInfo: { merit: number; hours: number } | null = null;
+  private offlineDoubleBtn: { x: number; y: number; w: number; h: number } | null = null;
   private showBreakthrough = false;
   private breakthroughInfo: { name: string; unlocks: string[] } | null = null;
   private showTutorial = false;
@@ -59,6 +60,7 @@ export class HomeScene extends Scene {
   private meritLabel!: Label;
   private levelLabel!: Label;
   private syncTipLabel!: Label;
+  private meritDoubleBtn!: Button;
 
   constructor(game: Game) {
     super(game);
@@ -143,6 +145,20 @@ export class HomeScene extends Scene {
     shareBtn.onTap = () => this.game.share.share('button');
     this.ui.add(shareBtn);
 
+    // 静心加成按钮(左上,激励视频:10 分钟内功德翻倍)
+    this.meritDoubleBtn = new Button(STRINGS.adMeritDouble, 96, 34, { font: 13 });
+    this.meritDoubleBtn.x = 10;
+    this.meritDoubleBtn.y = contentTop + 8;
+    this.meritDoubleBtn.onTap = () => {
+      this.game.ad.show('merit_double', () => {
+        this.game.save.extra.meritDoubleUntil = Date.now() + 10 * 60 * 1000;
+        this.game.saveManager.markDirty();
+        this.game.toast.show('静心加成:10 分钟内功德翻倍');
+        this.refreshHUD();
+      });
+    };
+    this.ui.add(this.meritDoubleBtn);
+
     this.refreshHUD();
   }
 
@@ -161,6 +177,17 @@ export class HomeScene extends Scene {
 
     this.syncTipLabel.text = this.game.sync.state === 'guest' ? STRINGS.guestTip : '';
     this.syncTipLabel.color = this.game.sync.state === 'guest' ? '#B8955A' : '#7A6F55';
+
+    // 静心加成按钮状态(剩余时间)
+    const until = this.game.save.extra.meritDoubleUntil || 0;
+    if (until > Date.now()) {
+      const remainMin = Math.max(1, Math.ceil((until - Date.now()) / 60000));
+      this.meritDoubleBtn.label = `加成中 ${remainMin}分`;
+      this.meritDoubleBtn.style.textColor = '#E8B84B';
+    } else {
+      this.meritDoubleBtn.label = STRINGS.adMeritDouble;
+      this.meritDoubleBtn.style.textColor = '#E8B84B';
+    }
   }
 
   // ---------- 事件订阅 ----------
@@ -188,7 +215,25 @@ export class HomeScene extends Scene {
   // ---------- 敲击 ----------
   onTouchStart(x: number, y: number): boolean {
     // 弹层优先
-    if (this.showOffline || this.showBreakthrough) {
+    if (this.showOffline && this.offlineInfo) {
+      // 命中"看视频翻倍"按钮 → 看广告后翻倍领取
+      const btn = this.offlineDoubleBtn;
+      if (btn && x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+        const merit = this.offlineInfo.merit;
+        this.game.ad.show('offline_double', () => {
+          this.game.sync.claimOfflineReward(merit, true).then((actual) => {
+            if (actual > 0) this.game.toast.show(`闭关功德 +${fmtNumber(actual)}`);
+          });
+        });
+        this.showOffline = false;
+        this.offlineInfo = null;
+        return true;
+      }
+      // 其他区域 = 普通领取
+      this.dismissOverlays();
+      return true;
+    }
+    if (this.showBreakthrough) {
       this.dismissOverlays();
       return true;
     }
@@ -499,7 +544,7 @@ export class HomeScene extends Scene {
     this.drawDim(ctx);
 
     const pw = width * 0.78;
-    const ph = 240;
+    const ph = 250;
     const px = (width - pw) / 2;
     const py = (height - ph) / 2 - 20;
 
@@ -517,11 +562,38 @@ export class HomeScene extends Scene {
     ctx.fillStyle = '#F5EDD8';
     ctx.font = '16px sans-serif';
     const lines = STRINGS.offlineBody(fmtDuration(this.offlineInfo.hours * 3600000), this.offlineInfo.merit).split('\n');
-    lines.forEach((line, i) => ctx.fillText(line, width / 2, py + 90 + i * 26));
+    lines.forEach((line, i) => ctx.fillText(line, width / 2, py + 92 + i * 26));
 
-    ctx.fillStyle = '#9A8F74';
-    ctx.font = '13px sans-serif';
-    ctx.fillText('轻触任意处领取', width / 2, py + ph - 36);
+    // 双按钮:看视频翻倍 + 直接领取
+    const btnW = (pw - 56) / 2;
+    const btnH = 44;
+    const btnY = py + ph - 64;
+    const doubleX = px + 20;
+    const claimX = px + 20 + btnW + 16;
+
+    // 翻倍按钮(金色)
+    ctx.fillStyle = 'rgba(232,184,75,0.22)';
+    roundRect(ctx, doubleX, btnY, btnW, btnH, 22);
+    ctx.fill();
+    ctx.strokeStyle = '#E8B84B';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#E8B84B';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(STRINGS.offlineDouble, doubleX + btnW / 2, btnY + btnH / 2 + 1);
+
+    // 直接领取按钮(次要)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    roundRect(ctx, claimX, btnY, btnW, btnH, 22);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#F5EDD8';
+    ctx.font = '15px sans-serif';
+    ctx.fillText(STRINGS.offlineClaim, claimX + btnW / 2, btnY + btnH / 2 + 1);
+
+    this.offlineDoubleBtn = { x: doubleX, y: btnY, w: btnW, h: btnH };
   }
 
   private drawBreakthrough(ctx: CanvasRenderingContext2D): void {

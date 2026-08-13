@@ -70,8 +70,9 @@ export class Ticker {
         }
       }
     }
-    if (this.tweens.length > 64) this.tweens = this.tweens.filter((t) => !t.done);
-    else this.tweens = this.tweens.filter((t) => !t.done);
+    if (this.tweens.length > 64 || this.tweens.some((t) => t.done)) {
+      this.tweens = this.tweens.filter((t) => !t.done);
+    }
 
     for (const d of this.delayed) {
       if (!d.done && this.now >= d.at) {

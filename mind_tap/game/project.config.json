@@ -1,26 +1,58 @@
 {
-  "description": "敲到成佛 - 微信小游戏工程",
-  "compileType": "game",
-  "libVersion": "3.5.5",
-  "appid": "touristappid",
-  "projectname": "kxcf-game",
-  "cloudfunctionRoot": "cloud/",
-  "setting": {
-    "es6": true,
-    "enhance": true,
-    "minified": true,
-    "urlCheck": false,
-    "ignoreUploadUnusedFiles": true
-  },
-  "packOptions": {
-    "ignore": [
-      { "type": "folder", "value": "src" },
-      { "type": "folder", "value": "node_modules" },
-      { "type": "file", "value": "tsconfig.json" },
-      { "type": "file", "value": "package.json" },
-      { "type": "file", "value": "package-lock.json" },
-      { "type": "file", "value": ".gitignore" },
-      { "type": "file", "value": "README.md" }
-    ]
-  }
+    "description": "敲到成佛 - 微信小游戏工程",
+    "compileType": "game",
+    "libVersion": "3.5.5",
+    "appid": "wxcca7b54a93adbf84",
+    "projectname": "kxcf-game",
+    "cloudfunctionRoot": "cloud/",
+    "setting": {
+        "es6": true,
+        "enhance": true,
+        "minified": true,
+        "urlCheck": false,
+        "ignoreUploadUnusedFiles": true,
+        "babelSetting": {
+            "ignore": [],
+            "disablePlugins": [],
+            "outputPath": ""
+        }
+    },
+    "packOptions": {
+        "ignore": [
+            {
+                "value": "src",
+                "type": "folder"
+            },
+            {
+                "value": "node_modules",
+                "type": "folder"
+            },
+            {
+                "value": "tsconfig.json",
+                "type": "file"
+            },
+            {
+                "value": "package.json",
+                "type": "file"
+            },
+            {
+                "value": "package-lock.json",
+                "type": "file"
+            },
+            {
+                "value": ".gitignore",
+                "type": "file"
+            },
+            {
+                "value": "README.md",
+                "type": "file"
+            }
+        ],
+        "include": []
+    },
+    "condition": {},
+    "editorSetting": {
+        "tabIndent": "insertSpaces",
+        "tabSize": 4
+    }
 }

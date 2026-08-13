@@ -11,3 +11,12 @@ mind_tap/game/dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# 微信开发者工具个人私有配置(不入库)
+project.private.config.json
+
+# 音色调参试听产物(游戏内实时合成,无需入库)
+mind_tap/*.wav
+
+# mind_tap 根目录冗余工程配置(实际工程在 mind_tap/game/)
+mind_tap/project.config.json

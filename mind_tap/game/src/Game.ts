@@ -9,6 +9,7 @@ import { Toast } from './ui/Toast';
 import { bus, Events } from './core/EventBus';
 
 import { SaveData } from './data/types';
+import { FEEL } from './data/configs';
 import { MeritSystem } from './systems/MeritSystem';
 import { ComboSystem } from './systems/ComboSystem';
 import { LevelSystem } from './systems/LevelSystem';
@@ -67,6 +68,12 @@ export class Game {
     // 3. 音频(需等待首次触摸激活)
     this.audio.init();
     this.audio.setSoundOn(this.save.soundOn);
+    this.audio.setTapSound(
+      this.save.tapSound === 'wooden' ? 'wooden'
+        : this.save.tapSound === 'crisp' ? 'crisp'
+        : this.save.tapSound === 'thump' ? 'thump'
+        : 'resonant'
+    );
 
     // 4. 系统装配
     this.combo = new ComboSystem();
@@ -78,6 +85,7 @@ export class Game {
     this.share = new ShareSystem(this);
     this.ad = new AdSystem(this);
     this.analytics = new Analytics(this);
+    this.analytics.init();
 
     // 5. 每日重置 + 偈语
     this.daily.rolloverIfNeeded();
@@ -138,8 +146,8 @@ export class Game {
       const x = t.clientX;
       const y = t.clientY;
 
-      // 80ms 内的重复 start 视为抖动合并(场景层仍收到事件,由 MeritSystem 每帧至多结算 1 击)
-      if (now - this.lastTapAt < 80) return;
+      // 80ms 内的重复 start 视为抖动合并(阈值走配置 FEEL.tapMergeMs)
+      if (now - this.lastTapAt < FEEL.tapMergeMs) return;
       this.lastTapAt = now;
 
       this.scenes.top?.onTouchStart(x, y);
@@ -166,13 +174,15 @@ export class Game {
       this.loop.pause();
       this.audio.pauseBgm();
       this.saveManager.flush();          // 强写本地
-      this.analytics.sessionEnd();
+      this.analytics.sessionEnd();       // 结束会话埋点
+      this.analytics.destroy();          // 清理定时器
       this.sync.flush();                 // 尽力同步
     });
 
     wx.onShow(() => {
       this.loop.resume();
       this.audio.resumeBgm();
+      this.analytics.init();             // 重建埋点定时器
       this.daily.rolloverIfNeeded();
       // 回到前台检查离线收益(罗汉解锁后)
       bus.emit(Events.OFFLINE_REWARD, { check: true });
