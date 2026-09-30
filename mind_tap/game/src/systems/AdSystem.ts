@@ -1,6 +1,6 @@
 // 激励视频广告:封装 + 频控 + 降级
 // 所有广告入口均为主动领取按钮,绝不打断敲击
-import { AD_UNIT_ID, AD_LIMITS, AD_DAILY_TOTAL, DEV_MOCK_ADS } from '../data/configs';
+import { AD_UNIT_ID, AD_LIMITS, AD_DAILY_TOTAL, AD_GRACE_MS, DEV_MOCK_ADS } from '../data/configs';
 import { STRINGS } from '../data/strings';
 import type { Game } from '../Game';
 
@@ -37,15 +37,28 @@ export class AdSystem {
    * onReward 在完整看完后回调;取消/失败不扣次数
    */
   show(tag: AdTag, onReward: () => void): void {
+    if (Date.now() - this.game.bootAt < AD_GRACE_MS) {
+      this.game.toast.show(STRINGS.adGrace);
+      return;
+    }
     if (this.remain(tag) <= 0) {
       this.game.toast.show(STRINGS.adLimitReached);
       return;
     }
 
+    const grant = () => {
+      this.game.daily.recordAd(tag).then((ok) => {
+        if (!ok) {
+          this.game.toast.show(STRINGS.adLimitReached);
+          return;
+        }
+        onReward();
+      });
+    };
+
     // 开发期 mock:直接发奖励(提审前必须接真实广告)
     if (DEV_MOCK_ADS || !this.ad) {
-      this.game.daily.adWatched(tag);
-      onReward();
+      grant();
       return;
     }
 
@@ -59,8 +72,7 @@ export class AdSystem {
       this.ad.offClose(onClose);
       this.loading = false;
       if (res && res.isEnded) {
-        this.game.daily.adWatched(tag);
-        onReward();
+        grant();
       } else {
         this.game.toast.show('未看完,未获得奖励');
       }
@@ -69,11 +81,15 @@ export class AdSystem {
     this.ad.show().catch(() => {
       this.ad.offClose(onClose);
       this.loading = false;
-      // 加载失败重试一次
       this.ad
         .load()
-        .then(() => this.ad.show())
+        .then(() => {
+          this.loading = true;
+          this.ad.onClose(onClose);
+          return this.ad.show();
+        })
         .catch((e: any) => {
+          this.loading = false;
           console.warn('[Ad] 展示失败:', e);
           this.game.toast.show(STRINGS.adNotReady);
         });

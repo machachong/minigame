@@ -2,10 +2,13 @@
 // 内容超高时支持垂直滚动(拖动 + 裁剪),适配小屏设备
 import { Scene } from '../core/Scene';
 import { SKINS, SCENES, BGMS, LEVELS } from '../data/configs';
+import { BODHI_COST, REBIRTH_MERIT } from '../data/play';
+import { ensurePlay } from '../systems/playRules';
 import { STRINGS } from '../data/strings';
 import { UIContainer } from '../ui/Node';
 import { Button, Label, roundRect } from '../ui/widgets';
 import { fmtNumber, clamp } from '../utils/format';
+import { ringCount } from '../utils/practiceRules';
 import type { Game } from '../Game';
 
 export class CultivateScene extends Scene {
@@ -55,36 +58,71 @@ export class CultivateScene extends Scene {
     // 境界卡
     const level = this.game.levelSystem.current;
     const next = this.game.levelSystem.next;
-    const infoText = next
+    let infoText = next
       ? `${level.name} → ${next.name}(还需 ${fmtNumber(next.merit - save.merit)} 功德)`
       : `${level.name}(已至最高境界)`;
+    const play = ensurePlay(save);
+    if (play.cycle > 0) {
+      infoText = `第${play.cycle}世 · 舍利子${play.relics} · ` + infoText;
+    }
     const info = new Label(infoText, 14, '#F5EDD8');
     info.x = width / 2;
     info.y = y;
     this.content.add(info);
-    y += 44;
+    y += 22;
+    const rings = new Label(
+      `年轮 ${ringCount(save.totalTaps)} · 敲击 ${fmtNumber(save.totalTaps)} · 刻痕 ${play.cycle}`,
+      13,
+      '#C9B98A'
+    );
+    rings.x = width / 2;
+    rings.y = y;
+    this.content.add(rings);
+    y += 28;
+
+    const rebirthBtn = new Button(save.merit >= REBIRTH_MERIT ? '入灭 · 功德重计' : `入灭需 ${fmtNumber(REBIRTH_MERIT)} 功德`, width - 48, 40, { font: 14 });
+    rebirthBtn.x = 24;
+    rebirthBtn.y = y;
+    rebirthBtn.enabled = save.merit >= REBIRTH_MERIT;
+    rebirthBtn.onTap = () => {
+      wx.showModal({
+        title: '入灭',
+        content: '境界和已解锁内容保留,本世功德从零再计,获得一颗舍利子。',
+        success: (res: { confirm?: boolean }) => {
+          if (!res.confirm) return;
+          this.game.rebirth.perform().then((ok) => {
+            this.game.toast.show(ok ? '已入灭,舍利子 +1' : '现在还不能入灭');
+            if (ok) this.rebuild();
+          });
+        },
+      });
+    };
+    this.content.add(rebirthBtn);
+    y += 52;
 
     // 皮肤区
     y = this.buildSection('木鱼皮肤', SKINS.map(s => ({
       id: s.id,
       name: s.name,
-      desc: s.bonus > 0 ? `功德 +${s.bonus * 100}%` : '初始',
-      unlocked: s.unlockLevel <= levelIdx,
+      desc: s.id === 'mist' ? `菩提子 ${play.bodhi}/${BODHI_COST}` : s.id === 'sunbird' ? '入灭解锁' : s.bonus > 0 ? `功德 +${Math.round(s.bonus * 100)}%` : '初始',
+      unlocked: s.unlockLevel <= levelIdx || save.inventory.skins.includes(s.id),
       equipped: save.skinId === s.id,
       onTap: () => {
-        if (this.game.skin.isSkinUnlocked(s.id)) {
-          if (this.game.skin.equipSkin(s.id)) {
-            this.game.toast.show(`已装备「${s.name}」`);
-            this.rebuild();
+        if (s.id === 'mist' && !save.inventory.skins.includes('mist')) {
+          if (play.bodhi < BODHI_COST) {
+            this.game.toast.show(`再集 ${BODHI_COST - play.bodhi} 颗菩提子`);
+            return;
           }
-        } else {
-          // 未解锁 → 看视频限时试用(激励点位:皮肤试用)
-          this.game.ad.show('skin_trial', () => {
-            this.game.skin.trialSkin(s.id);
-            this.game.toast.show(`已试用「${s.name}」30 分钟`);
-            this.rebuild();
-          });
+          play.bodhi -= BODHI_COST;
+          save.inventory.skins.push('mist');
+          this.game.saveManager.markDirty();
         }
+        if (this.game.skin.isSkinUnlocked(s.id) && this.game.skin.equipSkin(s.id)) {
+          this.game.toast.show(`已装备「${s.name}」`);
+          this.rebuild();
+          return;
+        }
+        this.game.toast.show(s.id === 'sunbird' ? '入灭一次后解锁' : '尚未解锁');
       },
     })), y);
 

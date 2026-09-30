@@ -1,8 +1,11 @@
 // 每日功课 + 每日一偈(日留存双钩子)
 import { bus, Events } from '../core/EventBus';
-import { DAILY_TAP_GOAL } from '../data/configs';
-import { todayKey } from '../utils/format';
+import { AD_LIMITS, DAILY_TAP_GOAL, STREAK_ORNAMENT_DAYS, STREAK_ORNAMENT_ID } from '../data/configs';
+import { STRINGS } from '../data/strings';
+import { dateKeyOf, todayKey } from '../utils/format';
+import { rollDaily } from '../utils/dailyRules';
 import type { Game } from '../Game';
+import type { AdTag } from './AdSystem';
 
 export class DailySystem {
   private game: Game;
@@ -15,18 +18,10 @@ export class DailySystem {
   rolloverIfNeeded(): void {
     const save = this.game.save;
     const today = todayKey();
-    if (save.daily.dateKey !== today) {
-      // 连续天数:昨天完成过才 +1,否则断签(精确逻辑以云端 dailyClaim 为准)
-      save.daily = {
-        dateKey: today,
-        taps: 0,
-        claimed: false,
-        streak: save.daily.claimed ? save.daily.streak : 0,
-        shareMeritClaimed: false,
-        adWatch: {},
-      };
-      this.game.saveManager.markDirty();
-    }
+    if (save.daily.dateKey === today) return;
+    const yesterday = dateKeyOf(Date.now() - 86400000);
+    save.daily = rollDaily(save.daily, today, yesterday);
+    this.game.saveManager.markDirty();
   }
 
   onTap(): void {
@@ -35,6 +30,8 @@ export class DailySystem {
     save.daily.taps += 1;
     if (before < DAILY_TAP_GOAL && save.daily.taps >= DAILY_TAP_GOAL) {
       bus.emit(Events.DAILY_GOAL, {});
+      const bonus = this.game.gongfa.dailyBonus();
+      if (bonus > 0) this.game.merit.addMerit(bonus, 'dayuan');
     }
   }
 
@@ -62,6 +59,7 @@ export class DailySystem {
       const reward = 88;
       save.daily.claimed = true;
       save.daily.streak += 1;
+      this.grantStreakOrnament(save.daily.streak);
       this.game.merit.addMerit(reward, 'daily_guest');
       bus.emit(Events.DAILY_CLAIMED, { reward, streak: save.daily.streak });
       this.game.saveManager.markDirty();
@@ -76,6 +74,7 @@ export class DailySystem {
       if (r.ok) {
         save.daily.claimed = true;
         save.daily.streak = r.streak || save.daily.streak + 1;
+        this.grantStreakOrnament(save.daily.streak);
         // 云端已入账,本地仅镜像,避免双倍
         this.game.merit.applyCloudReward(r.reward, 'daily');
         bus.emit(Events.DAILY_CLAIMED, { reward: r.reward, streak: save.daily.streak });
@@ -124,6 +123,39 @@ export class DailySystem {
     const d = this.game.save.daily;
     d.adWatch[tag] = (d.adWatch[tag] || 0) + 1;
     this.game.saveManager.markDirty();
+  }
+
+  /**
+   * 广告看完后记一次。在线时先写云端,离线翻倍才认这次记录;
+   * 云端拒绝(超限)则本地也不记,避免和频控不一致。
+   */
+  async recordAd(tag: AdTag): Promise<boolean> {
+    if (this.remain(tag) <= 0) return false;
+    if (this.game.sync.state === 'guest') {
+      this.adWatched(tag);
+      return true;
+    }
+    try {
+      const res = await wx.cloud.callFunction({ name: 'dailyClaim', data: { type: 'ad', tag } });
+      const r = res.result || {};
+      if (!r.ok) return false;
+      this.adWatched(tag);
+      return true;
+    } catch (e) {
+      console.warn('[Daily] ad record 失败:', e);
+      return false;
+    }
+  }
+
+  private remain(tag: string): number {
+    return this.adRemain(tag, AD_LIMITS[tag] || 1);
+  }
+
+  private grantStreakOrnament(streak: number): void {
+    if (streak < STREAK_ORNAMENT_DAYS) return;
+    if (this.game.save.extra.ornamentId) return;
+    this.game.save.extra.ornamentId = STREAK_ORNAMENT_ID;
+    this.game.toast.show(STRINGS.ornamentGot);
   }
 
   adTotalToday(): number {

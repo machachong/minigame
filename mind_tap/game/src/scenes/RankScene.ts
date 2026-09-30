@@ -13,13 +13,16 @@ export class RankScene extends Scene {
   private sharedCanvas: any = null;
   private lastUpload = 0;
   private loading = true;
+  /** 开放域画布与主域绘制使用同一块列表区域，避免整屏画布缩放后文字被裁切 */
+  private list = { x: 16, y: 0, w: 0, h: 0 };
 
   constructor(game: Game) {
     super(game);
   }
 
   enter(): void {
-    const { width, height, contentTop } = this.game.renderer;
+    const { width, contentTop } = this.game.renderer;
+    this.layoutList();
 
     const title = new Label('功德榜', 22, '#E8B84B');
     title.bold = true;
@@ -40,13 +43,14 @@ export class RankScene extends Scene {
     try {
       this.openCtx = wx.getOpenDataContext();
       this.sharedCanvas = this.openCtx.canvas;
-      // 通知开放域渲染排行榜
+      const dpr = this.game.renderer.dpr;
+      this.sharedCanvas.width = Math.floor(this.list.w * dpr);
+      this.sharedCanvas.height = Math.floor(this.list.h * dpr);
       this.openCtx.postMessage({
         type: 'renderRank',
-        width: width,
-        height: height - contentTop - 60,
-        dpr: this.game.renderer.dpr,
-        myMerit: Math.floor(this.game.save.merit),
+        width: this.list.w,
+        height: this.list.h,
+        dpr,
       });
       this.loading = false;
     } catch (e) {
@@ -63,6 +67,13 @@ export class RankScene extends Scene {
     } catch (e) {
       /* ignore */
     }
+  }
+
+  private layoutList(): void {
+    const { width, height, contentTop } = this.game.renderer;
+    const myY = contentTop + 60;
+    const y = myY + 64;
+    this.list = { x: 16, y, w: width - 32, h: Math.max(120, height - y - 40) };
   }
 
   private uploadScore(): void {
@@ -104,25 +115,18 @@ export class RankScene extends Scene {
       28, myY + 24
     );
 
-    // 排行榜区域(sharedCanvas,开放域已按传入尺寸+dpr 渲染,主域等比缩放防拉伸)
-    const listY = myY + 64;
-    const listH = height - listY - 40;
+    // 排行榜区域与开放域画布同尺寸，按逻辑像素 1:1 贴上，不再缩放
+    const { x, y, w, h } = this.list;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x, y, w, h);
     if (this.sharedCanvas && !this.loading) {
-      const cw = this.sharedCanvas.width || 1;
-      const ch = this.sharedCanvas.height || 1;
-      const availW = width - 32;
-      const scale = Math.min(availW / cw, listH / ch);
-      const dw = cw * scale;
-      const dh = ch * scale;
-      // 背景
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(16, listY, availW, listH);
-      ctx.drawImage(this.sharedCanvas, 16 + (availW - dw) / 2, listY + (listH - dh) / 2, dw, dh);
+      ctx.drawImage(this.sharedCanvas, x, y, w, h);
     } else {
       ctx.fillStyle = '#9A8F74';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(this.loading ? '加载中...' : '排行榜暂不可用', width / 2, listY + 60);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.loading ? '加载中...' : '排行榜暂不可用', x + w / 2, y + h / 2);
     }
 
     this.ui.render(ctx);

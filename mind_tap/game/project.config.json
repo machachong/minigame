@@ -1,8 +1,8 @@
 {
     "description": "敲到成佛 - 微信小游戏工程",
     "compileType": "game",
-    "libVersion": "3.5.5",
-    "appid": "wxcca7b54a93adbf84",
+    "libVersion": "3.17.3",
+    "appid": "wx9868818d99442f92",
     "projectname": "kxcf-game",
     "cloudfunctionRoot": "cloud/",
     "setting": {

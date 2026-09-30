@@ -4,7 +4,24 @@ import { Scene } from '../core/Scene';
 import { bus, Events } from '../core/EventBus';
 import { FEEL, OFFLINE_UNLOCK_LEVEL } from '../data/configs';
 import { STRINGS, COMBO_TEXTS, TUTORIAL_STEPS } from '../data/strings';
-import { fmtNumber, fmtDuration, clamp } from '../utils/format';
+import { fmtNumber, fmtDuration, clamp, todayKey } from '../utils/format';
+import { COPY_HIT_R, PRACTICE_REWARD, type LessonDef } from '../data/practice';
+import {
+  applyCopy,
+  applyOnceTap,
+  applySettle,
+  copyCharOf,
+  copyDotOffset,
+  dayIndexOf,
+  lessonOf,
+  listenReady,
+  notchCount,
+  onceReady,
+  practiceLabel,
+  ringCount,
+  ringRadiusRatio,
+  verseOf,
+} from '../utils/practiceRules';
 import { ObjectPool } from '../utils/pool';
 import { UIContainer } from '../ui/Node';
 import { Button, Panel, Label, roundRect } from '../ui/widgets';
@@ -12,6 +29,8 @@ import { CultivateScene } from './CultivateScene';
 import { DailyScene } from './DailyScene';
 import { RankScene } from './RankScene';
 import { SettingScene } from './SettingScene';
+import { SutraScene } from './SutraScene';
+import { ENERGY_MAX } from '../data/play';
 import type { Game } from '../Game';
 
 interface FloatText {
@@ -55,6 +74,16 @@ export class HomeScene extends Scene {
   private breakthroughInfo: { name: string; unlocks: string[] } | null = null;
   private showTutorial = false;
   private tutorialStep = 0;
+
+  private dock = { x: 0, y: 0, w: 0, h: 0 };
+  /** 今日修行进行中。只放内存，冷启动和「先不修」都回到普通敲击 */
+  private practicing = false;
+  private lastSettleAt = 0;
+  private onceWaitMs = 0;
+  private copyShake = 0;
+  private verse = '';
+  private practiceRect = { x: 0, y: 0, w: 0, h: 0 };
+  private pauseRect = { x: 0, y: 0, w: 0, h: 0 };
 
   // 顶部 UI 引用
   private meritLabel!: Label;
@@ -119,24 +148,7 @@ export class HomeScene extends Scene {
     this.syncTipLabel.y = contentTop + 84;
     this.ui.add(this.syncTipLabel);
 
-    // 底部导航
-    const navY = contentBottom - 30;
-    const btnW = 68;
-    const btnH = 40;
-    const gap = (width - btnW * 4) / 5;
-    const navs: Array<[string, () => void]> = [
-      [STRINGS.navCultivate, () => this.game.scenes.push(new CultivateScene(this.game))],
-      [STRINGS.navDaily, () => this.game.scenes.push(new DailyScene(this.game))],
-      [STRINGS.navRank, () => this.game.scenes.push(new RankScene(this.game))],
-      [STRINGS.navSettings, () => this.game.scenes.push(new SettingScene(this.game))],
-    ];
-    navs.forEach(([label, cb], i) => {
-      const btn = new Button(label, btnW, btnH);
-      btn.x = gap + (btnW + gap) * i;
-      btn.y = navY;
-      btn.onTap = cb;
-      this.ui.add(btn);
-    });
+      this.buildDock(width, contentBottom);
 
     // 分享按钮(右上)
     const shareBtn = new Button(STRINGS.shareBtn, 96, 34, { font: 13 });
@@ -160,6 +172,70 @@ export class HomeScene extends Scene {
     this.ui.add(this.meritDoubleBtn);
 
     this.refreshHUD();
+  }
+
+  /** 底部六键收成一块底栏,两行三列对齐 */
+  private buildDock(width: number, contentBottom: number): void {
+    const cols = 3;
+    const gap = 8;
+    const inset = 12;
+    const btnH = 36;
+    const margin = 14;
+    const innerW = width - margin * 2 - inset * 2;
+    const btnW = (innerW - gap * (cols - 1)) / cols;
+    const dockH = inset * 2 + btnH * 2 + gap;
+    const dockY = contentBottom - dockH;
+    this.dock = { x: margin, y: dockY, w: width - margin * 2, h: dockH };
+
+    const quiet = {
+      bg: 'rgba(255,255,255,0.05)',
+      bgPressed: 'rgba(232,184,75,0.28)',
+      textColor: '#E4D7B8',
+      border: 'rgba(232,184,75,0.22)',
+      font: 14,
+      radius: 12,
+    };
+    const accent = {
+      ...quiet,
+      bg: 'rgba(232,184,75,0.2)',
+      textColor: '#F0D48A',
+      border: 'rgba(232,184,75,0.7)',
+    };
+
+    const items: Array<{ label: string; accent?: boolean; onTap: () => void }> = [
+      { label: '听经', accent: true, onTap: () => this.game.scenes.push(new SutraScene(this.game)) },
+      {
+        label: '真言',
+        onTap: () => {
+          const text = this.game.gongfa.cast();
+          this.game.toast.show(text || `能量 ${this.game.gongfa.play.energy}/${ENERGY_MAX}`);
+        },
+      },
+      { label: STRINGS.navCultivate, onTap: () => this.game.scenes.push(new CultivateScene(this.game)) },
+      { label: STRINGS.navDaily, onTap: () => this.game.scenes.push(new DailyScene(this.game)) },
+      { label: STRINGS.navRank, onTap: () => this.game.scenes.push(new RankScene(this.game)) },
+      { label: STRINGS.navSettings, onTap: () => this.game.scenes.push(new SettingScene(this.game)) },
+    ];
+
+    items.forEach((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const btn = new Button(item.label, btnW, btnH, item.accent ? accent : quiet);
+      btn.x = margin + inset + col * (btnW + gap);
+      btn.y = dockY + inset + row * (btnH + gap);
+      btn.onTap = item.onTap;
+      this.ui.add(btn);
+    });
+  }
+
+  private drawDock(ctx: CanvasRenderingContext2D): void {
+    const { x, y, w, h } = this.dock;
+    ctx.fillStyle = 'rgba(16, 22, 30, 0.88)';
+    roundRect(ctx, x, y, w, h, 18);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(232,184,75,0.28)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   private refreshHUD(): void {
@@ -223,10 +299,10 @@ export class HomeScene extends Scene {
         this.game.ad.show('offline_double', () => {
           this.game.sync.claimOfflineReward(merit, true).then((actual) => {
             if (actual > 0) this.game.toast.show(`闭关功德 +${fmtNumber(actual)}`);
+            this.showOffline = false;
+            this.offlineInfo = null;
           });
         });
-        this.showOffline = false;
-        this.offlineInfo = null;
         return true;
       }
       // 其他区域 = 普通领取
@@ -241,13 +317,38 @@ export class HomeScene extends Scene {
       this.advanceTutorial();
       return true;
     }
+    if (this.verse) {
+      this.verse = '';
+      return true;
+    }
+    if (!this.practicing && this.game.events.hitBubble(x, y)) {
+      const bonus = this.game.events.pop();
+      this.doTap(x, y);
+      this.spawnFloat(x, y - 24, `烦恼 +${bonus}`, '#E8B84B', 16);
+      return true;
+    }
+
     // UI 按钮
     if (this.ui.dispatchTouch('start', x, y)) return true;
 
+    if (this.practicing && (this.hitRect(x, y, this.pauseRect) || this.hitRect(x, y, this.practiceRect))) {
+      if (this.hitRect(x, y, this.pauseRect)) this.practicing = false;
+      return true;
+    }
+    const daily = this.game.save.daily;
+    if (!this.practicing && !daily.practiceDone && this.hitRect(x, y, this.practiceRect)) {
+      this.practicing = true;
+      this.lastSettleAt = 0;
+      this.onceWaitMs = 0;
+      return true;
+    }
+    if (this.practicing) {
+      this.onPracticePointer(x, y);
+      return true;
+    }
+
     // 木鱼命中(宽松判定:半径 ×1.3)
-    const dx = x - this.game.renderer.cx;
-    const dy = y - this.fishY;
-    if (dx * dx + dy * dy <= this.fishR * this.fishR * 1.69) {
+    if (this.hitFish(x, y)) {
       this.doTap(x, y);
       return true;
     }
@@ -263,6 +364,7 @@ export class HomeScene extends Scene {
   }
 
   private doTap(x: number, y: number): void {
+    this.game.events.notePointer(x, y);
     const gain = this.game.merit.onTap();
 
     // 视觉:按压 + 涟漪 + 飘字
@@ -278,6 +380,8 @@ export class HomeScene extends Scene {
       '#F5EDD8',
       17
     );
+
+    this.noteRing();
 
     // 听觉 + 触觉
     this.game.audio.playTap(this.game.skin.currentSkin);
@@ -351,10 +455,131 @@ export class HomeScene extends Scene {
     }
   }
 
+  private todayLesson(): LessonDef {
+    return lessonOf(dayIndexOf(this.game.save.daily.dateKey || todayKey()));
+  }
+
+  private hitRect(x: number, y: number, r: { x: number; y: number; w: number; h: number }): boolean {
+    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  }
+
+  private hitFish(x: number, y: number): boolean {
+    const dx = x - this.game.renderer.cx;
+    const dy = y - this.fishY;
+    return dx * dx + dy * dy <= this.fishR * this.fishR * 1.69;
+  }
+
+  private noteRing(): void {
+    const taps = this.game.save.totalTaps;
+    if (ringCount(taps) <= ringCount(taps - 1)) return;
+    this.spawnFloat(this.game.renderer.cx, this.fishY - this.fishR - 36, '木纹深了一圈', '#E8B84B', 16);
+  }
+
+  private finishPractice(): void {
+    const daily = this.game.save.daily;
+    if (daily.practiceDone) return;
+    daily.practiceDone = true;
+    daily.practiceStreak = (daily.practiceStreak || 0) + 1;
+    this.practicing = false;
+    this.game.merit.addMerit(PRACTICE_REWARD, 'practice');
+    this.verse = verseOf(dayIndexOf(daily.dateKey || todayKey()));
+    this.game.saveManager.markDirty();
+  }
+
+  private onPracticePointer(x: number, y: number): void {
+    const daily = this.game.save.daily;
+    if (daily.practiceDone) {
+      this.practicing = false;
+      return;
+    }
+    const lesson = this.todayLesson();
+    if (lesson.id === 'listen') {
+      daily.practiceProgress = 0;
+      this.practicing = false;
+      if (this.hitFish(x, y)) this.doTap(x, y);
+      else this.game.saveManager.markDirty();
+      return;
+    }
+    if (lesson.id === 'settle') {
+      if (!this.hitFish(x, y)) return;
+      const result = applySettle(daily.practiceProgress || 0, Date.now(), this.lastSettleAt);
+      this.lastSettleAt = result.lastAt;
+      if (!result.countMerit) {
+        this.spawnFloat(x, this.fishY - this.fishR - 10, result.hint, '#9A8F74', 15);
+        return;
+      }
+      daily.practiceProgress = result.progress;
+      this.doTap(x, y);
+      if (result.done) this.finishPractice();
+      return;
+    }
+    if (lesson.id === 'once') {
+      if (!this.hitFish(x, y)) return;
+      const result = applyOnceTap();
+      daily.practiceProgress = result.progress;
+      this.onceWaitMs = 0;
+      this.doTap(x, y);
+      return;
+    }
+    const dot = this.copyHitIndex(x, y);
+    if (dot === -1) return;
+    const result = applyCopy(daily.practiceProgress || 0, dot);
+    if (result.shake) {
+      this.copyShake = 1;
+      return;
+    }
+    if (!result.countMerit) return;
+    daily.practiceProgress = result.progress;
+    this.doTap(x, y);
+    if (result.done) this.finishPractice();
+  }
+
+  /** 点中的抄经点下标。鱼身上但没点中点时返回 -2，鱼外返回 -1 */
+  private copyHitIndex(x: number, y: number): number {
+    let best = -1;
+    let bestD = COPY_HIT_R;
+    for (let i = 0; i < 6; i++) {
+      const p = this.copyDotScreen(i);
+      const dx = x - p.x;
+      const dy = y - p.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d <= bestD) {
+        best = i;
+        bestD = d;
+      }
+    }
+    if (best >= 0) return best;
+    return this.hitFish(x, y) ? -2 : -1;
+  }
+
+  private copyDotScreen(index: number): { x: number; y: number } {
+    const off = copyDotOffset(index);
+    return {
+      x: this.game.renderer.cx + off.x * this.fishR,
+      y: this.fishY + off.y * this.fishR * this.squash,
+    };
+  }
+
   // ---------- 帧更新 ----------
   update(dt: number): void {
     // 呼吸光晕
     this.glowPulse = (this.glowPulse + dt / 2000) % 1;
+    if (this.copyShake > 0) this.copyShake = Math.max(0, this.copyShake - dt / 180);
+
+    const blocked = this.showOffline || this.showBreakthrough || this.showTutorial || !!this.verse;
+    if (this.practicing && !blocked && !this.game.save.daily.practiceDone) {
+      const lesson = this.todayLesson();
+      const daily = this.game.save.daily;
+      if (lesson.id === 'listen') {
+        const before = Math.floor((daily.practiceProgress || 0) / 1000);
+        daily.practiceProgress = (daily.practiceProgress || 0) + dt;
+        if (Math.floor(daily.practiceProgress / 1000) !== before) this.game.saveManager.markDirty();
+        if (listenReady(daily.practiceProgress)) this.finishPractice();
+      } else if (lesson.id === 'once' && (daily.practiceProgress || 0) >= 1) {
+        this.onceWaitMs += dt;
+        if (onceReady(this.onceWaitMs)) this.finishPractice();
+      }
+    }
 
     // 飘字
     for (let i = this.floats.length - 1; i >= 0; i--) {
@@ -392,6 +617,11 @@ export class HomeScene extends Scene {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
+    if ((this.game.save.extra.auraUntil || 0) > Date.now()) {
+      ctx.fillStyle = 'rgba(232,184,75,0.12)';
+      ctx.fillRect(0, 0, width, height);
+    }
+
     // 场景装饰
     this.drawSceneDecor(ctx, scene);
 
@@ -416,8 +646,30 @@ export class HomeScene extends Scene {
       ctx.stroke();
     }
 
+    const bubble = this.game.events.bubble;
+    if (bubble) {
+      ctx.fillStyle = 'rgba(180,90,70,0.9)';
+      ctx.beginPath();
+      ctx.arc(bubble.x, bubble.y, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#F5EDD8';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('烦恼', bubble.x, bubble.y + 4);
+    }
+
     // 木鱼(按压形变)
-    this.drawFish(ctx, cx, this.fishY, this.fishR, this.squash, skin);
+    const playCycle = (this.game.save.extra.play && this.game.save.extra.play.cycle) || 0;
+    const rings = ringCount(this.game.save.totalTaps);
+    const gold = (this.game.save.daily.practiceStreak || 0) >= 7;
+    this.drawFish(ctx, cx, this.fishY, this.fishR, this.squash, skin, rings, notchCount(playCycle), gold);
+    if (this.practicing && this.todayLesson().id === 'copy') this.drawCopy(ctx, cx);
+    if (this.game.save.extra.ornamentId) {
+      ctx.fillStyle = '#E8B84B';
+      ctx.beginPath();
+      ctx.arc(cx, this.fishY - this.fishR - 18, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // 涟漪
     for (const r of this.ripples) {
@@ -449,7 +701,8 @@ export class HomeScene extends Scene {
       ctx.fillText(`${this.game.combo.combo} 连击`, cx, this.fishY + this.fishR + 40);
     }
 
-    // UI
+    this.drawPracticeEntry(ctx);
+    this.drawDock(ctx);
     this.ui.render(ctx);
 
     // 进度条(境界)
@@ -459,16 +712,21 @@ export class HomeScene extends Scene {
     if (this.showOffline && this.offlineInfo) this.drawOfflineDialog(ctx);
     if (this.showBreakthrough && this.breakthroughInfo) this.drawBreakthrough(ctx);
     if (this.showTutorial) this.drawTutorial(ctx);
+    if (this.verse) this.drawVerse(ctx);
   }
 
   private drawFish(
     ctx: CanvasRenderingContext2D,
     cx: number, cy: number, r: number,
     squashY: number,
-    skin: { body: string; bodyDark: string; highlight: string; mouth: string }
+    skin: { body: string; bodyDark: string; highlight: string; mouth: string },
+    rings: number,
+    notches: number,
+    gold: boolean
   ): void {
     ctx.save();
     ctx.translate(cx, cy);
+    if (this.copyShake > 0) ctx.translate(Math.sin(this.copyShake * 18) * 3 * this.copyShake, 0);
     ctx.scale(1, squashY);
 
     // 鱼身(椭圆渐变)
@@ -480,6 +738,38 @@ export class HomeScene extends Scene {
     ctx.beginPath();
     ctx.ellipse(0, 0, r, r * 0.92, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    for (let i = 0; i < rings; i++) {
+      const ratio = ringRadiusRatio(i);
+      ctx.strokeStyle = skin.bodyDark;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = r * 0.015;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * ratio, r * ratio * 0.92, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (gold) {
+      const pulse = 0.28 + 0.22 * Math.sin(this.glowPulse * Math.PI * 2);
+      const ratio = rings > 0 ? ringRadiusRatio(0) : 0.72;
+      ctx.strokeStyle = `rgba(232,184,75,${pulse})`;
+      ctx.lineWidth = r * 0.02;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * ratio, r * ratio * 0.92, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (notches > 0) {
+      ctx.strokeStyle = '#E8B84B';
+      ctx.lineWidth = Math.max(1.5, r * 0.035);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < notches; i++) {
+        const t = notches === 1 ? 0.5 : i / (notches - 1);
+        const a = Math.PI * (0.28 + t * 0.44);
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.8, a - 0.07, a + 0.07);
+        ctx.stroke();
+      }
+    }
 
     // 鱼口(上部横缝)
     ctx.strokeStyle = skin.mouth;
@@ -497,6 +787,70 @@ export class HomeScene extends Scene {
     ctx.fill();
 
     ctx.restore();
+  }
+
+  private drawPracticeEntry(ctx: CanvasRenderingContext2D): void {
+    const { width, contentTop } = this.game.renderer;
+    const daily = this.game.save.daily;
+    const lesson = this.todayLesson();
+    const text = practiceLabel(lesson, daily.practiceProgress || 0, !!daily.practiceDone);
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(text).width;
+    this.practiceRect = { x: width / 2 - tw / 2 - 10, y: contentTop + 90, w: tw + 20, h: 24 };
+    ctx.fillStyle = daily.practiceDone ? '#7A6F55' : '#C9B98A';
+    ctx.fillText(text, width / 2, this.practiceRect.y + 12);
+
+    if (!this.practicing) {
+      this.pauseRect = { x: 0, y: 0, w: 0, h: 0 };
+      return;
+    }
+    this.pauseRect = { x: width - 86, y: contentTop + 46, w: 72, h: 28 };
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    roundRect(ctx, this.pauseRect.x, this.pauseRect.y, this.pauseRect.w, this.pauseRect.h, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(232,184,75,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#E4D7B8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('先不修', this.pauseRect.x + this.pauseRect.w / 2, this.pauseRect.y + this.pauseRect.h / 2 + 1);
+  }
+
+  private drawCopy(ctx: CanvasRenderingContext2D, cx: number): void {
+    const lessonDay = dayIndexOf(this.game.save.daily.dateKey || todayKey());
+    const progress = this.game.save.daily.practiceProgress || 0;
+    ctx.fillStyle = 'rgba(245,237,216,0.35)';
+    ctx.font = `${Math.floor(this.fishR * 0.34)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(copyCharOf(lessonDay), cx, this.fishY + this.fishR * 0.08);
+    for (let i = 0; i < 6; i++) {
+      const p = this.copyDotScreen(i);
+      const done = i < progress;
+      const next = i === progress;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, next ? 7 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = done ? '#E8B84B' : next ? 'rgba(232,184,75,0.9)' : 'rgba(245,237,216,0.35)';
+      ctx.fill();
+    }
+  }
+
+  private drawVerse(ctx: CanvasRenderingContext2D): void {
+    const { width, height } = this.game.renderer;
+    this.drawDim(ctx, 0.72);
+    ctx.fillStyle = '#E8B84B';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.verse, width / 2, height * 0.42);
+    ctx.fillStyle = '#C9B98A';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('功德 +20', width / 2, height * 0.42 + 36);
+    ctx.fillStyle = '#7A6F55';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('轻触继续', width / 2, height * 0.72);
   }
 
   private drawSceneDecor(ctx: CanvasRenderingContext2D, scene: { accent: string }): void {

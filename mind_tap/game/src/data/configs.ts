@@ -53,6 +53,16 @@ export const SKINS: SkinConfig[] = [
     freq: 620, decay: 0.26, wave: 'sine',
     body: '#5FA98A', bodyDark: '#3A7A60', highlight: '#A8D8C0', mouth: '#24503C',
   },
+  {
+    id: 'mist', name: '薄雾', bonus: 0.12, unlockLevel: 99,
+    freq: 540, decay: 0.3, wave: 'sine',
+    body: '#7E93A8', bodyDark: '#4C6274', highlight: '#D5E2EC', mouth: '#2C3E4C',
+  },
+  {
+    id: 'sunbird', name: '金乌', bonus: 0.15, unlockLevel: 99,
+    freq: 360, decay: 0.42, wave: 'sine',
+    body: '#C4782A', bodyDark: '#8A4E12', highlight: '#F0C27A', mouth: '#5C3208',
+  },
 ];
 
 // ---------- 场景 ----------
@@ -77,6 +87,11 @@ export const SCENES: SceneConfig[] = [
     id: 'bamboo', name: '竹林幽潭', unlockLevel: 3,
     bgTop: '#16302A', bgBottom: '#0A1A16', accent: '#7BC496',
     textMain: '#E8F2E4', textSub: '#8AA893',
+  },
+  {
+    id: 'ridge', name: '雪脊', unlockLevel: 4,
+    bgTop: '#243044', bgBottom: '#121820', accent: '#D7E4EF',
+    textMain: '#F4F7FA', textSub: '#9AABBA',
   },
 ];
 
@@ -123,6 +138,11 @@ export const AD_LIMITS: Record<string, number> = {
   skin_trial: 1,      // 皮肤试用
 };
 export const AD_DAILY_TOTAL = 6;
+/** 首次进入后这段时间内不播激励视频 */
+export const AD_GRACE_MS = 60_000;
+/** 连续领满功课的天数，达成后给限定挂饰 */
+export const STREAK_ORNAMENT_DAYS = 7;
+export const STREAK_ORNAMENT_ID = 'jingjin';
 
 // ---------- 排行榜 ----------
 export const RANK_UPLOAD_INTERVAL_MS = 30000;

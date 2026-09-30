@@ -5,7 +5,6 @@
 let WIDTH = 375;
 let HEIGHT = 500;
 let dpr = 1;
-let myMerit = 0;
 let running = false;
 let renderTimer = null;
 
@@ -14,7 +13,6 @@ wx.onMessage((data) => {
     dpr = data.dpr || 1;
     WIDTH = data.width || 375;
     HEIGHT = data.height || 500;
-    myMerit = data.myMerit || 0;
     // 按传入尺寸 + dpr 设置画布物理分辨率,主域按等比绘制不再拉伸
     const canvas = wx.getSharedCanvas();
     canvas.width = Math.floor(WIDTH * dpr);
@@ -68,33 +66,34 @@ function getKV(kvList, key) {
   return item ? item.value : null;
 }
 
+function fillCenter(ctx, text, y) {
+  // 开放域里 textAlign=center 不可靠，用测量宽度自己居中
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width;
+  ctx.fillText(text, Math.max(0, (WIDTH - tw) / 2), y);
+}
+
 function drawRank(list) {
   const canvas = wx.getSharedCanvas();
   const ctx = canvas.getContext('2d');
   // 逻辑坐标 = 物理像素 / dpr
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = WIDTH - 32;
-  const h = HEIGHT;
+  const w = WIDTH;
 
   // 清空
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-  // 顶部:我的功德
-  ctx.fillStyle = '#C9B98A';
-  ctx.font = '13px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(`我的功德 ${myMerit}`, WIDTH / 2, 22);
-
   if (!list.length) {
     ctx.fillStyle = '#9A8F74';
     ctx.font = '14px sans-serif';
-    ctx.fillText('暂无好友数据,分享给好友一起修行吧', w / 2, 80);
+    fillCenter(ctx, '暂无好友数据', HEIGHT / 2 - 12);
+    fillCenter(ctx, '分享给好友一起修行吧', HEIGHT / 2 + 12);
     return;
   }
 
   const rowH = 52;
-  const startY = 44;
+  const startY = 8;
 
   list.slice(0, 20).forEach((user, i) => {
     const y = startY + i * rowH;

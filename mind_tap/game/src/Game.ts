@@ -19,7 +19,11 @@ import { SyncService } from './systems/SyncService';
 import { ShareSystem } from './systems/ShareSystem';
 import { AdSystem } from './systems/AdSystem';
 import { Analytics } from './systems/Analytics';
+import { GongfaSystem } from './systems/GongfaSystem';
+import { EventSystem } from './systems/EventSystem';
+import { RebirthSystem } from './systems/RebirthSystem';
 import { VERSES } from './data/strings';
+import { ringPitch } from './utils/practiceRules';
 
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';
@@ -47,9 +51,14 @@ export class Game {
   share!: ShareSystem;
   ad!: AdSystem;
   analytics!: Analytics;
+  gongfa!: GongfaSystem;
+  events!: EventSystem;
+  rebirth!: RebirthSystem;
 
   /** 当日偈语(启动时抽取,跨场景一致) */
   dailyVerse = '';
+
+  readonly bootAt = Date.now();
 
   private firstFrameRendered = false;
 
@@ -74,6 +83,7 @@ export class Game {
         : this.save.tapSound === 'thump' ? 'thump'
         : 'resonant'
     );
+    this.audio.setAmbience(!!this.save.extra.rainOn, !!this.save.extra.birdOn);
 
     // 4. 系统装配
     this.combo = new ComboSystem();
@@ -85,7 +95,12 @@ export class Game {
     this.share = new ShareSystem(this);
     this.ad = new AdSystem(this);
     this.analytics = new Analytics(this);
+    this.gongfa = new GongfaSystem(this);
+    this.events = new EventSystem(this);
+    this.rebirth = new RebirthSystem(this);
     this.analytics.init();
+    this.levelSystem.checkLevelUp();
+    this.gongfa.refresh();
 
     // 5. 每日重置 + 偈语
     this.daily.rolloverIfNeeded();
@@ -113,8 +128,10 @@ export class Game {
   }
 
   private frame(dt: number): void {
+    this.audio.setRingScale(ringPitch(this.save.totalTaps));
     this.ticker.update(dt);
     this.combo.update(dt);
+    this.events.update(dt);
     this.saveManager.tick();
     this.scenes.update(dt);
 
@@ -146,8 +163,8 @@ export class Game {
       const x = t.clientX;
       const y = t.clientY;
 
-      // 80ms 内的重复 start 视为抖动合并(阈值走配置 FEEL.tapMergeMs)
-      if (now - this.lastTapAt < FEEL.tapMergeMs) return;
+      // 主界面防抖动。听经要精确连点,不走这道合并。
+      if (!this.scenes.top?.preciseTouch && now - this.lastTapAt < FEEL.tapMergeMs) return;
       this.lastTapAt = now;
 
       this.scenes.top?.onTouchStart(x, y);
@@ -173,15 +190,17 @@ export class Game {
     wx.onHide(() => {
       this.loop.pause();
       this.audio.pauseBgm();
+      this.audio.pauseAmbience();
       this.saveManager.flush();          // 强写本地
       this.analytics.sessionEnd();       // 结束会话埋点
       this.analytics.destroy();          // 清理定时器
-      this.sync.flush();                 // 尽力同步
+      this.sync.flush(true);             // 尽力同步,并刷新离开时间
     });
 
     wx.onShow(() => {
       this.loop.resume();
       this.audio.resumeBgm();
+      this.audio.resumeAmbience();
       this.analytics.init();             // 重建埋点定时器
       this.daily.rolloverIfNeeded();
       // 回到前台检查离线收益(罗汉解锁后)

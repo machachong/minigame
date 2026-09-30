@@ -62,20 +62,28 @@ export class DailyScene extends Scene {
     streak.y = contentTop + 195;
     this.ui.add(streak);
 
-    // 每日一偈
+    // 每日一偈:敲满功课后才显现,可转发
     const verseTitle = new Label('每日一偈', 16, '#C9B98A');
     verseTitle.x = width / 2;
     verseTitle.y = contentTop + 245;
     this.ui.add(verseTitle);
 
-    const verse = new Label(this.game.dailyVerse, 15, '#F5EDD8');
+    const verse = new Label(p.done ? this.game.dailyVerse : STRINGS.verseLocked, 15, p.done ? '#F5EDD8' : '#7A6F55');
     verse.x = width / 2;
     verse.y = contentTop + 280;
     this.ui.add(verse);
 
+    if (this.game.save.extra.ornamentId) {
+      const pendant = new Label('挂饰 · 精进', 13, '#E8B84B');
+      pendant.x = width / 2;
+      pendant.y = contentTop + 360;
+      this.ui.add(pendant);
+    }
+
     const shareBtn = new Button('转发偈语 +100 功德', 200, 40, { font: 14 });
     shareBtn.x = (width - 200) / 2;
     shareBtn.y = contentTop + 315;
+    shareBtn.enabled = p.done;
     shareBtn.onTap = () => this.game.share.share('verse');
     this.ui.add(shareBtn);
   }

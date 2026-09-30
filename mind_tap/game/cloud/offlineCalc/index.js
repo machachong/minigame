@@ -41,7 +41,7 @@ exports.main = async (event) => {
   const hours = Math.min((now.getTime() - lastSeen) / 3600000, CAP_HOURS);
 
   // 罗汉(境界 3)解锁离线禅修
-  const levelIdx = levelIndexOf(doc.merit || 0);
+  const levelIdx = Math.max(levelIndexOf(doc.merit || 0), doc.levelPeak || 0);
   if (levelIdx < OFFLINE_UNLOCK_LEVEL) return { ok: false, err: 'not_unlocked', merit: 0 };
 
   if (hours < 0.05) return { ok: true, merit: 0, hours: 0 }; // 不足 3 分钟
@@ -55,7 +55,11 @@ exports.main = async (event) => {
     }
   }
 
-  const coeff = 1 + levelIdx * LEVEL_COEFF;
+  const slots = (doc.extraPlay && doc.extraPlay.slots) || [];
+  const mastered = (doc.extraPlay && doc.extraPlay.mastered) || [];
+  let gongfaMul = 1;
+  if (slots.includes('fajie')) gongfaMul = mastered.includes('fajie') ? 2.4 : 2;
+  const coeff = (1 + levelIdx * LEVEL_COEFF) * gongfaMul;
   let merit = Math.floor(TAPS_PER_HOUR * hours * coeff);
   if (doubled) merit *= 2;
 
@@ -64,10 +68,6 @@ exports.main = async (event) => {
     offlineClaimedAt: now,
     lastSeenAt: now,
   };
-  if (doubled) {
-    updateData['daily.dateKey'] = today;
-    updateData['daily.adWatch.offline_double'] = _.inc(1);
-  }
 
   await profiles.doc(doc._id).update({ data: updateData });
 

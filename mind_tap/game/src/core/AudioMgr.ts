@@ -10,11 +10,19 @@ export class AudioMgr {
   private unlocked = false;
   private soundOn = true;
   private tapSound: TapSoundStyle = 'resonant';
+  /** 年轮把基频乘到 0.90–1，音色档位本身不变 */
+  private ringScale = 1;
 
   private bgm: any = null; // InnerAudioContext 单例
   private bgmId = 'none';
   private bgmTargetVolume = 0.6;
   private fadeTimer: any = null;
+
+  private rainOn = false;
+  private birdOn = false;
+  private rainSrc: any = null;
+  private birdSrc: any = null;
+  private ambiencePaused = false;
 
   init(): void {
     try {
@@ -27,12 +35,26 @@ export class AudioMgr {
 
   setSoundOn(on: boolean): void {
     this.soundOn = on;
-    if (!on) this.stopBgm();
+    if (!on) {
+      this.destroyBgm();
+      this.stopAmbienceLoops();
+      return;
+    }
+    if (this.bgmId !== 'none') {
+      const id = this.bgmId;
+      this.bgmId = '';
+      this.playBgm(id);
+    }
+    this.syncAmbience();
   }
 
   /** 切换木鱼音色:'resonant'(腔体共振)| 'wooden'(木质敲击)| 'crisp'(清脆实木)| 'thump'(咚咚木鱼) */
   setTapSound(style: TapSoundStyle): void {
     this.tapSound = style;
+  }
+
+  setRingScale(scale: number): void {
+    this.ringScale = scale > 0 ? scale : 1;
   }
 
   /** 必须在首次 touchstart 中调用(iOS 激活策略) */
@@ -41,6 +63,7 @@ export class AudioMgr {
     this.unlocked = true;
     try {
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      this.syncAmbience();
     } catch (e) {
       /* ignore */
     }
@@ -66,7 +89,7 @@ export class AudioMgr {
       const t: number = this.ctx.currentTime;
       // 基频 ±2.5% 随机,听感更自然
       const jitter = 1 + (Math.random() * 0.05 - 0.025);
-      const f = skin.freq * jitter;
+      const f = skin.freq * jitter * this.ringScale;
       const d = skin.decay;
 
       // 1) 槌击瞬态:短噪声(木质"哒"的接触声)
@@ -90,7 +113,7 @@ export class AudioMgr {
       const t: number = this.ctx.currentTime;
       const jitter = 1 + (Math.random() * 0.06 - 0.03);
       // 木质音色基频更低(≈0.72×),声音更"实"
-      const f = skin.freq * 0.72 * jitter;
+      const f = skin.freq * 0.72 * jitter * this.ringScale;
       const d = skin.decay * 0.9;
 
       // 1) 强槌击瞬态(木质敲击的接触冲击更明显)
@@ -111,7 +134,7 @@ export class AudioMgr {
     try {
       const t: number = this.ctx.currentTime;
       const jitter = 1 + (Math.random() * 0.05 - 0.025);
-      const f = skin.freq * jitter;
+      const f = skin.freq * jitter * this.ringScale;
       const d = skin.decay * 0.9;
 
       // 1) 极高频瞬态(硬木接触"啪")+ 中频冲击(带通"咔")
@@ -136,7 +159,7 @@ export class AudioMgr {
     try {
       const t: number = this.ctx.currentTime;
       const jitter = 1 + (Math.random() * 0.05 - 0.025);
-      const f = skin.freq * jitter;
+      const f = skin.freq * jitter * this.ringScale;
       const d = skin.decay * 1.15; // 余韵更长
 
       // 1) 瞬态:中频为主(木质"哒",避免过高频的金属"叮")
@@ -266,11 +289,11 @@ export class AudioMgr {
 
   // ---------- BGM ----------
   playBgm(id: string): void {
-    if (id === this.bgmId) return;
+    if (id === this.bgmId && this.bgm) return;
+    this.destroyBgm();
     this.bgmId = id;
     const cfg = BGMS.find((b: BgmConfig) => b.id === id);
-    this.stopBgm();
-    if (!cfg || !cfg.url || !this.soundOn) return;
+    if (!cfg || !cfg.url || !this.soundOn || id === 'none') return;
 
     try {
       this.bgm = wx.createInnerAudioContext();
@@ -289,16 +312,111 @@ export class AudioMgr {
   }
 
   stopBgm(): void {
-    if (this.bgm) {
-      try {
-        this.bgm.stop();
-        this.bgm.destroy();
-      } catch (e) {
-        /* ignore */
-      }
-      this.bgm = null;
-    }
+    this.destroyBgm();
     this.bgmId = 'none';
+  }
+
+  private destroyBgm(): void {
+    if (this.fadeTimer) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = null;
+    }
+    if (!this.bgm) return;
+    try {
+      this.bgm.stop();
+      this.bgm.destroy();
+    } catch (e) {
+      /* ignore */
+    }
+    this.bgm = null;
+  }
+
+  /** 雨声 / 鸟鸣。音量压在敲击音和佛乐下面,可各自开关 */
+  setAmbience(rain: boolean, bird: boolean): void {
+    this.rainOn = rain;
+    this.birdOn = bird;
+    this.syncAmbience();
+  }
+
+  pauseAmbience(): void {
+    this.ambiencePaused = true;
+    this.stopAmbienceLoops();
+  }
+
+  resumeAmbience(): void {
+    this.ambiencePaused = false;
+    this.syncAmbience();
+  }
+
+  private syncAmbience(): void {
+    if (!this.soundOn || !this.ctx || !this.unlocked || this.ambiencePaused) {
+      this.stopAmbienceLoops();
+      return;
+    }
+    if (this.rainOn) this.ensureLoop('rain');
+    else this.stopLoop('rain');
+    if (this.birdOn) this.ensureLoop('bird');
+    else this.stopLoop('bird');
+  }
+
+  private ensureLoop(kind: 'rain' | 'bird'): void {
+    if (kind === 'rain' ? this.rainSrc : this.birdSrc) return;
+    try {
+      const sr = this.ctx.sampleRate || 44100;
+      const len = sr * 2;
+      const buffer = this.ctx.createBuffer(1, len, sr);
+      const data = buffer.getChannelData(0);
+      if (kind === 'rain') this.fillRain(data);
+      else this.fillBird(data, sr);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const gain = this.ctx.createGain();
+      gain.gain.value = kind === 'rain' ? 0.045 : 0.03;
+      src.connect(gain);
+      gain.connect(this.ctx.destination);
+      src.start();
+      if (kind === 'rain') this.rainSrc = src;
+      else this.birdSrc = src;
+    } catch (e) {
+      /* 白噪音失败不影响敲击 */
+    }
+  }
+
+  private fillRain(data: Float32Array): void {
+    let prev = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      prev = prev * 0.85 + white * 0.15;
+      data[i] = prev;
+    }
+  }
+
+  private fillBird(data: Float32Array, sr: number): void {
+    const chirps = [0.15, 0.7, 1.25, 1.7];
+    for (const start of chirps) {
+      const from = Math.floor(start * sr);
+      const n = Math.floor(0.08 * sr);
+      for (let i = 0; i < n && from + i < data.length; i++) {
+        const t = i / sr;
+        const env = Math.sin((i / n) * Math.PI);
+        const f = 2800 - t * 900;
+        data[from + i] += Math.sin(2 * Math.PI * f * t) * env * 0.8;
+      }
+    }
+  }
+
+  private stopAmbienceLoops(): void {
+    this.stopLoop('rain');
+    this.stopLoop('bird');
+  }
+
+  private stopLoop(kind: 'rain' | 'bird'): void {
+    const src = kind === 'rain' ? this.rainSrc : this.birdSrc;
+    if (!src) return;
+    try { src.stop(); } catch (e) { /* already stopped */ }
+    if (kind === 'rain') this.rainSrc = null;
+    else this.birdSrc = null;
   }
 
   pauseBgm(): void {

@@ -13,10 +13,13 @@ const DEFAULT_PROFILE = {
   vibrateOn: true,
   tapSound: 'resonant',
   inventory: { skins: ['classic_wood'], scenes: ['temple'], bgms: [] },
-  daily: { dateKey: '', taps: 0, claimed: false, streak: 0, shareMeritClaimed: false, adWatch: {} },
+  daily: { dateKey: '', taps: 0, claimed: false, streak: 0, shareMeritClaimed: false, adWatch: {}, practiceProgress: 0, practiceDone: false, practiceStreak: 0 },
   lastSeenAt: null,
   lastSyncAt: null,
   offlineClaimedAt: 0,
+  cycle: 0,
+  relics: 0,
+  levelPeak: 0,
   extra: {},
 };
 

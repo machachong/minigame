@@ -4,13 +4,19 @@ import { FEEL } from '../data/configs';
 
 export class ComboSystem {
   combo = 0;
+  /** 功法「慈悲愿」延长的断连时间 */
+  extraResetMs = 0;
   /** 距中断剩余时间(用于渐隐光晕提示) */
   private resetTimer = 0;
   private hitMilestones: Set<number> = new Set();
 
+  private windowMs(): number {
+    return FEEL.comboResetMs + this.extraResetMs;
+  }
+
   onTap(): void {
     this.combo += 1;
-    this.resetTimer = FEEL.comboResetMs;
+    this.resetTimer = this.windowMs();
     bus.emit(Events.COMBO_CHANGED, { combo: this.combo });
 
     if (FEEL.comboMilestones.includes(this.combo) && !this.hitMilestones.has(this.combo)) {
@@ -32,6 +38,6 @@ export class ComboSystem {
   /** 中断前 1.5s 渐隐系数(1→0) */
   get fadeHint(): number {
     if (this.combo === 0) return 0;
-    return Math.max(0, Math.min(1, this.resetTimer / FEEL.comboResetMs));
+    return Math.max(0, Math.min(1, this.resetTimer / this.windowMs()));
   }
 }

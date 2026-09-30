@@ -32,6 +32,11 @@ export const STRINGS = {
   adOfflineDouble: '离线翻倍',
   adLimitReached: '明日再来',
   adNotReady: '广告加载中,稍后再试',
+  adGrace: '入静片刻,稍后再看',
+  verseLocked: '敲满今日功课,一偈自现',
+  ambienceRain: '雨声',
+  ambienceBird: '鸟鸣',
+  ornamentGot: '连续修行 7 日,获得挂饰「精进」',
 
   nextLevelPrefix: '距',
   nextLevelSuffix: '还差',

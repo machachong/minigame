@@ -17,10 +17,13 @@ export class MeritSystem {
     return skin ? skin.bonus : 0;
   }
 
-  /** 单次敲击功德(一期无功法;静心加成 buff 内翻倍) */
+  /** 单次功德 = (1 × (1 + 皮肤 + 功法) + 舍利子) × 翻倍。佛光和静心加成不叠成四倍。 */
   get meritPerTap(): number {
-    const buff = (this.game.save.extra.meritDoubleUntil || 0) > Date.now() ? 2 : 1;
-    return 1 * (1 + this.skinBonus) * buff;
+    const now = Date.now();
+    const doubled = (this.game.save.extra.meritDoubleUntil || 0) > now || (this.game.save.extra.auraUntil || 0) > now;
+    const gongfa = this.game.gongfa ? this.game.gongfa.meritBonus() : 0;
+    const relic = this.game.gongfa ? this.game.gongfa.relicFlat() : 0;
+    return (1 * (1 + this.skinBonus + gongfa) + relic) * (doubled ? 2 : 1);
   }
 
   /** 一次敲击结算(由 HomeScene 判定后调用,每帧至多 1 次) */
@@ -36,6 +39,8 @@ export class MeritSystem {
     bus.emit(Events.MERIT_CHANGED, { merit: save.merit, gain });
     this.game.levelSystem.checkLevelUp();
     this.game.daily.onTap();
+    this.game.gongfa.onTap();
+    this.game.events.onTap();
     this.game.sync.onLocalTap();
     return gain;
   }

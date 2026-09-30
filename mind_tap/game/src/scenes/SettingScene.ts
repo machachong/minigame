@@ -59,6 +59,28 @@ export class SettingScene extends Scene {
     this.content.add(vibrateToggle);
     y += 52;
 
+    const rainToggle = new Toggle(STRINGS.ambienceRain, !!save.extra.rainOn, toggleW);
+    rainToggle.x = 24;
+    rainToggle.y = y;
+    rainToggle.onChange = (v) => {
+      save.extra.rainOn = v;
+      this.game.audio.setAmbience(!!save.extra.rainOn, !!save.extra.birdOn);
+      this.game.saveManager.markDirty();
+    };
+    this.content.add(rainToggle);
+    y += 52;
+
+    const birdToggle = new Toggle(STRINGS.ambienceBird, !!save.extra.birdOn, toggleW);
+    birdToggle.x = 24;
+    birdToggle.y = y;
+    birdToggle.onChange = (v) => {
+      save.extra.birdOn = v;
+      this.game.audio.setAmbience(!!save.extra.rainOn, !!save.extra.birdOn);
+      this.game.saveManager.markDirty();
+    };
+    this.content.add(birdToggle);
+    y += 52;
+
     const bgmToggle = new Toggle('佛乐', save.bgmId !== 'none', toggleW);
     bgmToggle.x = 24;
     bgmToggle.y = y;

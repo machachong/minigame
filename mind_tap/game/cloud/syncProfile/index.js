@@ -15,12 +15,72 @@ const MAX_MERIT_PER_TAP = 2;
 // 与客户端 configs.ts 保持一致:境界门槛 / 皮肤 / 场景 / BGM 解锁等级
 const LEVEL_MERITS = [0, 1000, 10000, 100000, 1000000, 10000000];
 const SKIN_UNLOCKS = { classic_wood: 0, sandalwood: 1, jade: 2 };
-const SCENE_UNLOCKS = { temple: 0, bamboo: 3 };
+const EXTRA_SKINS = { mist: true, sunbird: true };
+const SCENE_UNLOCKS = { temple: 0, bamboo: 3, ridge: 4 };
 const BGM_UNLOCKS = { xinjing: 1, dabeizhou: 2, jingangjing: 3 };
 
 function todayKey() {
   const d = new Date(Date.now() + 8 * 3600 * 1000);
   return d.toISOString().slice(0, 10);
+}
+
+function yesterdayKey() {
+  const d = new Date(Date.now() + 8 * 3600 * 1000 - 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+function practiceOf(daily, sameDay, yesterday) {
+  if (sameDay) {
+    return {
+      practiceProgress: daily.practiceProgress || 0,
+      practiceDone: !!daily.practiceDone,
+      practiceStreak: daily.practiceStreak || 0,
+    };
+  }
+  return {
+    practiceProgress: 0,
+    practiceDone: false,
+    practiceStreak: daily.dateKey === yesterday && daily.practiceDone ? (daily.practiceStreak || 0) : 0,
+  };
+}
+
+/** 同一天取进度较大的一侧，避免云同步把今日修行盖掉 */
+function takePractice(rolled, client) {
+  if (!client || client.dateKey !== rolled.dateKey) return rolled;
+  const incoming = Math.max(0, Math.min(20000, Math.floor(Number(client.practiceProgress) || 0)));
+  rolled.practiceProgress = Math.max(rolled.practiceProgress || 0, incoming);
+  rolled.practiceDone = !!(rolled.practiceDone || client.practiceDone);
+  rolled.practiceStreak = Math.max(
+    rolled.practiceStreak || 0,
+    Math.max(0, Math.min(9999, Math.floor(Number(client.practiceStreak) || 0)))
+  );
+  return rolled;
+}
+
+/** 与客户端 dailyRules.rollDaily 同一口径;tapsToAdd 只加在当天 */
+function rollServerDaily(prev, today, tapsToAdd) {
+  const daily = prev || {};
+  if (daily.dateKey === today) {
+    return {
+      dateKey: today,
+      taps: (daily.taps || 0) + tapsToAdd,
+      claimed: !!daily.claimed,
+      streak: daily.streak || 0,
+      shareMeritClaimed: !!daily.shareMeritClaimed,
+      adWatch: daily.adWatch || {},
+      ...practiceOf(daily, true, ''),
+    };
+  }
+  const yesterday = yesterdayKey();
+  return {
+    dateKey: today,
+    taps: tapsToAdd,
+    claimed: false,
+    streak: daily.dateKey === yesterday && daily.claimed ? (daily.streak || 0) : 0,
+    shareMeritClaimed: false,
+    adWatch: {},
+    ...practiceOf(daily, false, yesterday),
+  };
 }
 
 function levelIndexOf(merit) {
@@ -34,7 +94,31 @@ function levelIndexOf(merit) {
 /** 过滤未解锁项(服务端权威,防伪造库存) */
 function filterUnlocked(list, unlockMap, levelIdx) {
   if (!Array.isArray(list)) return [];
-  return list.filter((id) => unlockMap[id] !== undefined && unlockMap[id] <= levelIdx);
+  return list.filter((id) => (unlockMap[id] !== undefined && unlockMap[id] <= levelIdx) || EXTRA_SKINS[id]);
+}
+
+const GONGFA_IDS = ['jingxin', 'cibei', 'bore', 'pomo', 'fajie', 'dayuan'];
+const MANTRA_IDS = ['daming', 'wangsheng', ''];
+
+function sanitizePlay(clientPlay, doc) {
+  const src = clientPlay || {};
+  const learned = (Array.isArray(src.learned) ? src.learned : []).filter((id) => GONGFA_IDS.includes(id));
+  const mastered = (Array.isArray(src.mastered) ? src.mastered : []).filter((id) => learned.includes(id));
+  const slots = (Array.isArray(src.slots) ? src.slots : []).filter((id) => learned.includes(id)).slice(0, 3);
+  const levelPeak = Math.max(doc.levelPeak || 0, Math.max(0, Math.min(5, Math.floor(src.levelPeak || 0))));
+  return {
+    learned,
+    mastered,
+    slots,
+    mantra: MANTRA_IDS.includes(src.mantra) ? src.mantra : '',
+    energy: Math.max(0, Math.min(100, Math.floor(src.energy || 0))),
+    bodhi: Math.max(0, Math.min(999, Math.floor(src.bodhi || 0))),
+    grades: src.grades && typeof src.grades === 'object' ? src.grades : {},
+    levelPeak,
+    cycle: doc.cycle || 0,
+    relics: doc.relics || 0,
+    pendingRebirth: false,
+  };
 }
 
 exports.main = async (event) => {
@@ -48,6 +132,17 @@ exports.main = async (event) => {
   if (res.data.length === 0) return { ok: false, err: 'no_profile' };
 
   const doc = res.data[0];
+
+  if (event.rebirth) {
+    if ((doc.merit || 0) < 1000000) return { ok: false, err: 'not_enough', merit: doc.merit || 0 };
+    const cycle = (doc.cycle || 0) + 1;
+    const relics = (doc.relics || 0) + 1;
+    await profiles.doc(doc._id).update({
+      data: { merit: 0, cycle, relics, lastSyncAt: now, lastSeenAt: now },
+    });
+    return { ok: true, cycle, relics, merit: 0 };
+  }
+
   const lastSync = doc.lastSyncAt ? new Date(doc.lastSyncAt).getTime() : now.getTime();
   const elapsedSec = Math.max(1, (now.getTime() - lastSync) / 1000);
 
@@ -113,15 +208,15 @@ exports.main = async (event) => {
     }
   }
 
-  // 每日功课 taps 累计(防刷:只能由 syncProfile 累计,客户端不可直接写)
-  const srvDaily = doc.daily || {};
-  if (srvDaily.dateKey === today) {
-    updateData['daily.taps'] = (srvDaily.taps || 0) + taps;
-  } else {
-    // 跨天:重置当天计数(claimed/shareMeritClaimed 由 dailyClaim 单独管理)
-    updateData['daily.dateKey'] = today;
-    updateData['daily.taps'] = taps;
-  }
+  // 每日功课:跨天必须清掉昨天的领取标记,否则第二天永远领不到
+  updateData.daily = takePractice(
+    rollServerDaily(doc.daily, today, taps),
+    clientProfile && clientProfile.practice
+  );
+
+  const play = sanitizePlay(clientProfile && clientProfile.play, doc);
+  updateData.extraPlay = play;
+  updateData.levelPeak = play.levelPeak;
 
   await profiles.doc(doc._id).update({ data: updateData });
 

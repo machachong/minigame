@@ -6,6 +6,9 @@ export interface DailyState {
   streak: number;           // 连续完成天数
   shareMeritClaimed: boolean; // 今日分享功德是否已领
   adWatch: Record<string, number>; // 广告点位当日观看次数
+  practiceProgress: number; // 今日修行进度。静听为已持续毫秒，其余为已完成下数
+  practiceDone: boolean;
+  practiceStreak: number;  // 连续圆满天数，与功课 streak 分开
 }
 
 export interface Inventory {
@@ -58,6 +61,9 @@ export function createDefaultSave(): SaveData {
       streak: 0,
       shareMeritClaimed: false,
       adWatch: {},
+      practiceProgress: 0,
+      practiceDone: false,
+      practiceStreak: 0,
     },
     lastSeenAt: now,
     lastSyncAt: 0,

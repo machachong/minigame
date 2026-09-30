@@ -2,6 +2,8 @@
 // 状态机: guest(超时降级,可玩) → online(已登录) → syncing → online/error
 import { bus, Events } from '../core/EventBus';
 import { CLOUD_ENV, SYNC_CONFIG } from '../data/configs';
+import { todayKey } from '../utils/format';
+import { ensurePlay, mergePlay } from './playRules';
 import type { Game } from '../Game';
 
 export type SyncState = 'guest' | 'online' | 'syncing' | 'error';
@@ -53,7 +55,7 @@ export class SyncService {
       this.openid = openid;
       this.setState('online');
       // 字段级合并:本地有未同步增量时保留本地,否则以云端为权威
-      this.mergeFromCloud(profile);
+      await this.mergeFromCloud(profile);
       // 启动定时上报
       this.startFlushTimer();
       // 上报存量
@@ -65,13 +67,34 @@ export class SyncService {
     }
   }
 
-  /** 云端 → 本地合并:字段级合并(本地未同步增量 ∪ 云端),数值取 max 保证多设备收敛 */
-  private mergeFromCloud(profile: any): void {
+  /** 同一世取较大功德。入灭后轮次更高的那一侧为准,避免清零被旧档加回去。 */
+  private async mergeFromCloud(profile: any): Promise<void> {
     if (!profile) return;
     const save = this.game.save;
-    // 数值:本地已含 pending 增量,云端是已同步权威 → 取 max 不缩水
-    save.merit = Math.max(save.merit, profile.merit || 0);
+    const play = ensurePlay(save);
+    let cloudMerit = profile.merit || 0;
+    let cloudCycle = profile.cycle || 0;
+    if (play.pendingRebirth && play.cycle > cloudCycle) {
+      const pushed = await this.pushRebirth();
+      if (pushed) {
+        cloudMerit = 0;
+        cloudCycle = play.cycle;
+      }
+    }
+    if (cloudCycle > play.cycle) {
+      save.merit = cloudMerit;
+      play.cycle = cloudCycle;
+      play.relics = profile.relics || play.relics;
+      play.pendingRebirth = false;
+      save.pendingMerit = 0;
+    } else if (!(play.pendingRebirth && play.cycle > (profile.cycle || 0))) {
+      save.merit = Math.max(save.merit, cloudMerit);
+      play.pendingRebirth = false;
+    }
     save.totalTaps = Math.max(save.totalTaps, profile.totalTaps || 0);
+    this.mergePractice(profile.daily);
+    if (profile.extraPlay) mergePlay(play, profile.extraPlay);
+    play.levelPeak = Math.max(play.levelPeak || 0, profile.levelPeak || 0);
     // 库存:永远取并集(另一台设备解锁的内容要能同步过来)
     if (profile.inventory) {
       save.inventory.skins = Array.from(new Set([...save.inventory.skins, ...(profile.inventory.skins || [])]));
@@ -89,6 +112,15 @@ export class SyncService {
     save.lastSyncAt = Date.now();
     this.game.saveManager.markDirty();
     this.game.levelSystem.checkLevelUp(); // 校准境界
+  }
+
+  /** 同一天的修行进度取较大值，换设备登录不会把今天清掉 */
+  private mergePractice(cloudDaily: any): void {
+    const save = this.game.save;
+    if (!cloudDaily || cloudDaily.dateKey !== todayKey() || save.daily.dateKey !== cloudDaily.dateKey) return;
+    save.daily.practiceDone = !!(save.daily.practiceDone || cloudDaily.practiceDone);
+    save.daily.practiceProgress = Math.max(save.daily.practiceProgress || 0, cloudDaily.practiceProgress || 0);
+    save.daily.practiceStreak = Math.max(save.daily.practiceStreak || 0, cloudDaily.practiceStreak || 0);
   }
 
   /** 敲击后调用:攒批或到量即上报 */
@@ -113,10 +145,11 @@ export class SyncService {
   }
 
   /** 上报增量到云端(节流 + 防重入) */
-  async flush(): Promise<void> {
+  /** presence=true:切后台时即使没有增量,也刷新云端 lastSeenAt */
+  async flush(presence = false): Promise<void> {
     if (this.state === 'guest' || this.syncing) return;
     const save = this.game.save;
-    if (save.pendingTaps === 0 && save.pendingMerit === 0) return;
+    if (!presence && save.pendingTaps === 0 && save.pendingMerit === 0) return;
 
     this.syncing = true;
     const taps = save.pendingTaps;
@@ -139,6 +172,13 @@ export class SyncService {
             vibrateOn: save.vibrateOn,
             tapSound: save.tapSound,
             inventory: save.inventory,
+            play: ensurePlay(save),
+            practice: {
+              dateKey: save.daily.dateKey,
+              practiceProgress: save.daily.practiceProgress || 0,
+              practiceDone: !!save.daily.practiceDone,
+              practiceStreak: save.daily.practiceStreak || 0,
+            },
           },
         },
       });
@@ -156,6 +196,25 @@ export class SyncService {
     } finally {
       this.syncing = false;
       this.game.saveManager.markDirty();
+    }
+  }
+
+  /** 在线入灭。服务端把功德清零并加一轮,本地再开始累计。 */
+  async pushRebirth(): Promise<boolean> {
+    if (this.state === 'guest') return false;
+    try {
+      const res = await wx.cloud.callFunction({ name: 'syncProfile', data: { rebirth: true } });
+      const r = res.result || {};
+      if (!r.ok) return false;
+      const play = ensurePlay(this.game.save);
+      play.cycle = r.cycle;
+      play.relics = r.relics;
+      play.pendingRebirth = false;
+      this.game.saveManager.markDirty();
+      return true;
+    } catch (e) {
+      console.warn('[Sync] 入灭失败:', e);
+      return false;
     }
   }
 
@@ -177,6 +236,7 @@ export class SyncService {
       // 游客模式:本地直接结算(联网后由 merge 校准)
       const amount = expectedMerit * (doubled ? 2 : 1);
       this.game.merit.addMerit(amount, 'offline_guest');
+      this.markOfflineClaimed();
       return amount;
     }
     try {
@@ -185,16 +245,24 @@ export class SyncService {
         data: { doubled },
       });
       const r = res.result || {};
-      if (r.ok) {
+      if (r.ok && r.merit > 0) {
         // 云端已入账,本地仅镜像,避免双倍
         this.game.merit.applyCloudReward(r.merit, 'offline');
-        this.game.save.offlineClaimedAt = Date.now();
+        this.markOfflineClaimed();
         return r.merit;
       }
     } catch (e) {
       console.warn('[Sync] 离线结算失败:', e);
     }
     return 0;
+  }
+
+  /** 领过之后把离开时间拨到现在,避免回到前台又弹出同一笔 */
+  private markOfflineClaimed(): void {
+    const now = Date.now();
+    this.game.save.lastSeenAt = now;
+    this.game.save.offlineClaimedAt = now;
+    this.game.saveManager.markDirty();
   }
 
   private setState(s: SyncState): void {

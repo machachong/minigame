@@ -4,6 +4,8 @@ import type { Game } from '../Game';
 
 export abstract class Scene {
   protected game: Game;
+  /** 听经等需要精确连点的场景跳过主界面 80ms 防抖 */
+  preciseTouch = false;
   constructor(game: Game) {
     this.game = game;
   }
