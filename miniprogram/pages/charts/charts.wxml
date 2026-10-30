@@ -1,0 +1,50 @@
+<view class="page charts">
+  <view class="seg">
+    <view
+      class="seg-item {{type==='expense'?'on':''}}"
+      data-type="expense"
+      hover-class="tap-scale-hover"
+      hover-stay-time="80"
+      bindtap="switchType"
+    >支出</view>
+    <view
+      class="seg-item {{type==='income'?'on':''}}"
+      data-type="income"
+      hover-class="tap-scale-hover"
+      hover-stay-time="80"
+      bindtap="switchType"
+    >收入</view>
+  </view>
+
+  <view class="card total-card {{listFading ? 'is-fading' : ''}}">
+    <view class="muted">{{yearMonth}} · {{type === 'expense' ? '分类支出' : '分类收入'}}</view>
+    <view class="total-num {{type === 'income' ? 'is-income' : ''}}">
+      <text class="yen">¥</text>{{total}}
+    </view>
+  </view>
+
+  <view class="loading-tip" wx:if="{{loading && !items.length}}">加载中…</view>
+
+  <view class="card list-card {{listFading ? 'is-fading' : ''}}" wx:elif="{{items.length}}">
+    <view class="row-item" wx:for="{{items}}" wx:key="category_id">
+      <view class="row-top row between">
+        <view class="row gap-sm">
+          <view class="icon-circle tiny {{type === 'income' ? 'income' : ''}}">{{item.category_name[0]}}</view>
+          <text class="cat-name">{{item.category_name}}</text>
+        </view>
+        <view class="row gap-sm">
+          <text class="pct muted">{{item.pct}}%</text>
+          <text class="amt {{type === 'income' ? 'amount-income' : 'amount-expense'}}">¥{{item.amountYuan}}</text>
+        </view>
+      </view>
+      <view class="bar-wrap">
+        <view class="bar {{type === 'income' ? 'income' : ''}}" style="width: {{item.barPct}}%;"></view>
+      </view>
+    </view>
+  </view>
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-icon">◔</view>
+    暂无分类数据
+    <view class="empty-sub">记几笔后再来看占比</view>
+  </view>
+</view>

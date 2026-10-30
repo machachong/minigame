@@ -1,0 +1,48 @@
+.invite-card {
+  text-align: center;
+  padding: 48rpx 36rpx 40rpx;
+  background: linear-gradient(180deg, #fff8f4 0%, #ffffff 55%);
+}
+.badge {
+  display: inline-block;
+  background: #fff3ed;
+  color: #ff7a45;
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+.book-name {
+  font-size: 44rpx;
+  font-weight: 750;
+  color: #1f2329;
+  margin-bottom: 12rpx;
+}
+.line { margin-bottom: 20rpx; }
+.status-pill {
+  display: inline-block;
+  font-size: 22rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: #f2f3f5;
+  color: #646a73;
+  margin-bottom: 28rpx;
+}
+.status-pill.pending {
+  background: #fff3ed;
+  color: #ff7a45;
+}
+.status-pill.accepted {
+  background: #eaf9f0;
+  color: #2fbf6b;
+}
+.join { margin-top: 8rpx; }
+.tip { margin-top: 12rpx; }
+.phone-line { margin: 12rpx 0 8rpx; }
+.phone-now {
+  font-size: 28rpx;
+  font-weight: 550;
+  margin-bottom: 8rpx;
+  color: #1f2329;
+}

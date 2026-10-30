@@ -1,0 +1,80 @@
+<view class="page home">
+  <view class="hero card">
+    <view class="hero-top row between">
+      <view>
+        <view class="hero-month">{{yearMonth}}</view>
+        <view class="hero-book">{{bookName}}</view>
+      </view>
+      <view
+        class="hero-chip"
+        hover-class="hero-chip-hover"
+        hover-stay-time="70"
+        bindtap="goRecord"
+      >记一笔</view>
+    </view>
+
+    <view class="hero-expense">
+      <view class="hero-expense-label">本月支出</view>
+      <view class="hero-expense-num">
+        <text class="yen">¥</text>{{expense}}
+      </view>
+    </view>
+
+    <view class="hero-sub row between">
+      <view>
+        <view class="hero-sub-label">本月收入</view>
+        <view class="hero-sub-num">¥{{income}}</view>
+      </view>
+      <view class="hero-sub-right" wx:if="{{budgetCents > 0}}">
+        <view class="hero-sub-label">预算进度 {{ratioText}}</view>
+        <view class="bar-bg">
+          <view class="bar-fg" style="width: {{ratioPct}}%;"></view>
+        </view>
+        <view class="hero-sub-label">¥{{budget}}</view>
+      </view>
+      <view class="hero-sub-right muted" wx:else>未设预算</view>
+    </view>
+  </view>
+
+  <view class="card recent-card">
+    <view class="row between section-head">
+      <text class="title-md">最近流水</text>
+      <text
+        class="btn-ghost"
+        hover-class="tap-dim-hover"
+        hover-stay-time="70"
+        bindtap="goLedger"
+      >全部 ›</text>
+    </view>
+
+    <view class="loading-tip" wx:if="{{loading && !recent.length}}">加载中…</view>
+
+    <block wx:elif="{{recent.length}}">
+      <view
+        class="item"
+        wx:for="{{recent}}"
+        wx:key="id"
+        hover-class="item-hover"
+        hover-stay-time="70"
+      >
+        <view class="item-left row gap-md">
+          <view class="icon-circle {{item.type === 'income' ? 'income' : ''}}">
+            {{item.category_name ? item.category_name[0] : '记'}}
+          </view>
+          <view class="item-meta">
+            <view class="item-title">{{item.category_name || '未分类'}}</view>
+            <view class="muted">{{item.record_date}} · {{item.note || item.account_name || '—'}}</view>
+          </view>
+        </view>
+        <view class="item-amt {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">
+          {{item.type === 'income' ? '+' : '-'}}{{item.amountYuan}}
+        </view>
+      </view>
+    </block>
+    <view class="empty" wx:elif="{{!loading}}">
+      <view class="empty-icon">✎</view>
+      暂无记录
+      <view class="empty-sub">点右上角「记一笔」开始记账</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,49 @@
+<view class="page books">
+  <view class="seg">
+    <view class="seg-item {{tab==='all'?'on':''}}" data-tab="all" hover-class="tap-scale-hover" hover-stay-time="80" bindtap="switchTab">全部</view>
+    <view class="seg-item {{tab==='personal'?'on':''}}" data-tab="personal" hover-class="tap-scale-hover" hover-stay-time="80" bindtap="switchTab">个人</view>
+    <view class="seg-item {{tab==='family'?'on':''}}" data-tab="family" hover-class="tap-scale-hover" hover-stay-time="80" bindtap="switchTab">家庭</view>
+  </view>
+
+  <view
+    class="card book {{item.id === currentId ? 'current' : ''}}"
+    wx:for="{{filtered}}"
+    wx:key="id"
+    hover-class="book-hover"
+    hover-stay-time="70"
+    bindtap="selectBook"
+    data-id="{{item.id}}"
+    data-name="{{item.name}}"
+  >
+    <view class="row between">
+      <view class="book-main">
+        <view class="row gap-sm book-title-row">
+          <text class="name">{{item.name}}</text>
+          <text class="tag" wx:if="{{item.id === currentId}}">当前</text>
+        </view>
+        <view class="muted">
+          {{item.kind === 'family' ? '家庭账本' : '个人账本'}} · {{item.role}} · {{item.member_count || 1}} 人
+        </view>
+      </view>
+      <text
+        class="link"
+        wx:if="{{item.kind === 'family'}}"
+        hover-class="tap-dim-hover"
+        hover-stay-time="70"
+        catchtap="goFamily"
+        data-id="{{item.id}}"
+      >详情 ›</text>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!filtered.length}}">
+    <view class="empty-icon">📒</view>
+    暂无账本
+    <view class="empty-sub">可新建个人或家庭账本</view>
+  </view>
+
+  <view class="card actions-bottom">
+    <view class="btn-primary" hover-class="tap-scale-hover" hover-stay-time="70" bindtap="createPersonal">新建个人账本</view>
+    <view class="btn-outline" hover-class="tap-scale-hover" hover-stay-time="70" bindtap="createFamily">创建家庭账本</view>
+  </view>
+</view>

@@ -1,0 +1,65 @@
+<view class="page mine">
+  <view class="card profile">
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" hover-class="avatar-hover">
+      <image wx:if="{{user.avatar_url || pendingAvatar}}" class="avatar-img" src="{{pendingAvatar || user.avatar_url}}" mode="aspectFill" />
+      <view wx:else class="avatar">{{avatarLetter}}</view>
+    </button>
+    <view class="profile-info">
+      <view class="name-wrap {{nameFocused ? 'input-focused' : ''}}">
+        <input
+          class="name-input"
+          type="nickname"
+          placeholder="点击填写昵称"
+          value="{{editNickname}}"
+          bindfocus="onNameFocus"
+          bindblur="onNicknameBlur"
+          bindchange="onNicknameChange"
+        />
+      </view>
+      <view class="muted book-line">账本 · {{bookName || '—'}}</view>
+      <view class="muted">手机 · {{user.phone || '未绑定'}}</view>
+    </view>
+  </view>
+
+  <view class="card menu">
+    <view class="menu-group-title muted">账号</view>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="oneClickLogin">
+      <text>微信一键登录</text>
+      <text class="chev">刷新 ›</text>
+    </view>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="saveProfile">
+      <text>保存昵称 / 头像</text>
+      <text class="chev">›</text>
+    </view>
+    <button class="menu-item phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" hover-class="menu-hover">
+      <text>微信授权手机号</text>
+      <text class="chev">›</text>
+    </button>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="bindPhoneManual">
+      <text>手动绑定手机号</text>
+      <text class="chev muted">开发 ›</text>
+    </view>
+  </view>
+
+  <view class="card menu">
+    <view class="menu-group-title muted">账本与预算</view>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="goBooks">
+      <text>账本管理</text>
+      <text class="chev">个人 / 家庭 ›</text>
+    </view>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="showBooks">
+      <text>快速切换账本</text>
+      <text class="chev">›</text>
+    </view>
+    <view class="menu-item" hover-class="menu-hover" hover-stay-time="70" bindtap="setBudget">
+      <text>本月预算</text>
+      <text class="chev">›</text>
+    </view>
+    <view class="menu-item last" hover-class="menu-hover" hover-stay-time="70" bindtap="reLogin">
+      <text>重新登录</text>
+      <text class="chev">›</text>
+    </view>
+  </view>
+
+  <view class="footer muted">轻记 · 简洁好用的记账</view>
+</view>

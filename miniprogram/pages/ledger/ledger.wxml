@@ -1,0 +1,63 @@
+<view class="page ledger">
+  <view class="card summary">
+    <view class="summary-month muted">{{yearMonth}} 流水</view>
+    <view class="summary-row row between">
+      <view class="summary-block">
+        <view class="summary-label">支出</view>
+        <view class="summary-expense">¥{{expense}}</view>
+      </view>
+      <view class="summary-divider"></view>
+      <view class="summary-block right">
+        <view class="summary-label">收入</view>
+        <view class="summary-income">¥{{income}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading-tip" wx:if="{{loading && !groups.length}}">加载中…</view>
+
+  <block wx:for="{{groups}}" wx:key="date">
+    <view class="day-head row between fade-in">
+      <view class="day-left">
+        <text class="day-date">{{item.dateLabel}}</text>
+        <text class="day-week muted">{{item.weekLabel}}</text>
+      </view>
+      <view class="day-sum muted">
+        <text wx:if="{{item.expenseCents}}">支 ¥{{item.expense}}</text>
+        <text wx:if="{{item.expenseCents && item.incomeCents}}"> · </text>
+        <text wx:if="{{item.incomeCents}}" class="in">收 ¥{{item.income}}</text>
+      </view>
+    </view>
+    <view class="card day-card">
+      <view
+        class="item"
+        wx:for="{{item.items}}"
+        wx:for-item="rec"
+        wx:key="id"
+        hover-class="item-hover"
+        hover-stay-time="70"
+      >
+        <view class="item-left row gap-md">
+          <view class="icon-circle {{rec.type === 'income' ? 'income' : ''}}">
+            {{rec.category_name ? rec.category_name[0] : '记'}}
+          </view>
+          <view class="item-meta">
+            <view class="item-title">{{rec.category_name || '未分类'}}</view>
+            <view class="muted">
+              {{rec.user_nickname ? rec.user_nickname + ' · ' : ''}}{{rec.note || rec.account_name || '—'}}
+            </view>
+          </view>
+        </view>
+        <view class="item-amt {{rec.type === 'income' ? 'amount-income' : 'amount-expense'}}">
+          {{rec.type === 'income' ? '+' : '-'}}{{rec.amountYuan}}
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="empty" wx:if="{{!loading && !groups.length}}">
+    <view class="empty-icon">☰</view>
+    本月暂无流水
+    <view class="empty-sub">去「记一笔」写下第一笔吧</view>
+  </view>
+</view>

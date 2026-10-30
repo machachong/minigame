@@ -1,0 +1,29 @@
+.book {
+  padding: 28rpx 32rpx;
+  transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.18s ease;
+}
+.book.current {
+  border: 2rpx solid rgba(255, 122, 69, 0.35);
+  background: linear-gradient(160deg, #ffffff, #fff8f4);
+}
+.book-hover {
+  background-color: #fafbfc !important;
+  transform: scale(0.995);
+}
+.book-title-row { margin-bottom: 10rpx; flex-wrap: wrap; }
+.name {
+  font-size: 32rpx;
+  font-weight: 650;
+  color: #1f2329;
+}
+.link {
+  color: #ff7a45;
+  font-size: 26rpx;
+  font-weight: 500;
+  padding: 8rpx 0 8rpx 16rpx;
+  transition: opacity 0.15s ease;
+}
+.actions-bottom {
+  margin-top: 8rpx;
+  margin-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}

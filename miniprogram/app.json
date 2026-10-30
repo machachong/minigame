@@ -1,0 +1,59 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/ledger/ledger",
+    "pages/record/record",
+    "pages/charts/charts",
+    "pages/mine/mine",
+    "pages/books/books",
+    "pages/family/family",
+    "pages/invite/accept"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#FF7A45",
+    "navigationBarTitleText": "轻记",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F7F8FA",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#FF7A45",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
+      },
+      {
+        "pagePath": "pages/ledger/ledger",
+        "text": "流水",
+        "iconPath": "images/ledger.png",
+        "selectedIconPath": "images/ledger-active.png"
+      },
+      {
+        "pagePath": "pages/record/record",
+        "text": "记一笔",
+        "iconPath": "images/record.png",
+        "selectedIconPath": "images/record-active.png"
+      },
+      {
+        "pagePath": "pages/charts/charts",
+        "text": "图表",
+        "iconPath": "images/charts.png",
+        "selectedIconPath": "images/charts-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "images/mine.png",
+        "selectedIconPath": "images/mine-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

@@ -1,0 +1,26 @@
+<view class="page invite">
+  <view class="card invite-card" wx:if="{{preview}}">
+    <view class="badge">家庭邀请</view>
+    <view class="book-name">{{preview.book_name}}</view>
+    <view class="muted line">邀请人 · {{preview.inviter_nickname}}</view>
+    <view class="status-pill {{preview.status}}">{{preview.status}}</view>
+    <view class="btn-primary join" wx:if="{{preview.status === 'pending'}}" hover-class="tap-scale-hover" hover-stay-time="70" bindtap="accept">一键加入</view>
+    <view class="muted tip" wx:else>该邀请不可用</view>
+  </view>
+  <view class="card" wx:elif="{{error}}">
+    <view class="empty">
+      <view class="empty-icon">!</view>
+      {{error}}
+    </view>
+  </view>
+  <view class="card" wx:else>
+    <view class="empty muted">加载中…</view>
+  </view>
+
+  <view class="card">
+    <view class="title-md">手机号邀请</view>
+    <view class="muted phone-line">接受手机号邀请前请先绑定</view>
+    <view class="phone-now">当前：{{phone || '未绑定'}}</view>
+    <view class="btn-outline" hover-class="tap-scale-hover" hover-stay-time="70" bindtap="bindPhone">绑定手机号</view>
+  </view>
+</view>

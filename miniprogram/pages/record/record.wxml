@@ -1,0 +1,132 @@
+<view class="page record">
+  <view class="seg">
+    <view
+      class="seg-item {{type==='expense'?'on':''}}"
+      data-type="expense"
+      hover-class="tap-scale-hover"
+      hover-stay-time="80"
+      bindtap="switchType"
+    >支出</view>
+    <view
+      class="seg-item {{type==='income'?'on':''}}"
+      data-type="income"
+      hover-class="tap-scale-hover"
+      hover-stay-time="80"
+      bindtap="switchType"
+    >收入</view>
+  </view>
+
+  <view class="card amount-card">
+    <view class="amount-label muted">{{type === 'expense' ? '支出金额' : '收入金额'}}</view>
+    <view class="amount-display {{type === 'income' ? 'is-income' : ''}} {{amountPulse ? 'pulse' : ''}}">
+      <text class="symbol">¥</text>
+      <text class="num">{{amountStr}}</text>
+    </view>
+  </view>
+
+  <view class="card cat-card {{catFading ? 'is-fading' : ''}}">
+    <view class="label">大类</view>
+    <view class="grid parent-grid">
+      <view
+        class="grid-item {{selectedParentId===item.id?'active':''}} {{type === 'income' ? 'is-income' : ''}}"
+        wx:for="{{parentCategories}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        hover-class="tap-scale-hover"
+        hover-stay-time="70"
+        bindtap="selectParent"
+      >
+        <view class="icon-circle {{type === 'income' ? 'income' : ''}} {{selectedParentId===item.id?'on':''}}">
+          {{item.name[0]}}
+        </view>
+        <text class="grid-name">{{item.name}}</text>
+      </view>
+    </view>
+
+    <block wx:if="{{selectedParentId && childCategories.length}}">
+      <view class="label child-label">小类</view>
+      <block wx:for="{{[childAnimKey]}}" wx:for-item="anim" wx:key="*this">
+        <view class="grid child-grid">
+          <view
+            class="grid-item {{selectedCategoryId===item.id?'active':''}} {{type === 'income' ? 'is-income' : ''}}"
+            wx:for="{{childCategories}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            hover-class="tap-scale-hover"
+            hover-stay-time="70"
+            bindtap="selectCategory"
+          >
+            <view class="icon-circle sm {{type === 'income' ? 'income' : ''}} {{selectedCategoryId===item.id?'on':''}}">
+              {{item.name[0]}}
+            </view>
+            <text class="grid-name">{{item.name}}</text>
+          </view>
+        </view>
+      </block>
+      <view class="empty-child" wx:if="{{!selectedCategoryId}}">请点选一个小类后再记账</view>
+    </block>
+    <view class="empty-child warn" wx:elif="{{selectedParentId}}">该大类暂无小类，请换一个大类</view>
+    <view class="muted empty-child" wx:else>请先选择大类，再选小类</view>
+  </view>
+
+  <view
+    class="card row between meta-row"
+    hover-class="tap-bg-hover"
+    hover-stay-time="70"
+    bindtap="pickAccount"
+  >
+    <text class="muted">账户</text>
+    <view class="row gap-sm">
+      <text class="meta-val">{{accountName || '请选择'}}</text>
+      <text class="muted chev">›</text>
+    </view>
+  </view>
+
+  <view class="card note-card {{noteFocused ? 'input-focused' : ''}}">
+    <input
+      class="note-input"
+      placeholder="备注（可选）"
+      placeholder-class="note-ph"
+      value="{{note}}"
+      bindinput="onNote"
+      bindfocus="onNoteFocus"
+      bindblur="onNoteBlur"
+      maxlength="40"
+    />
+  </view>
+
+  <view class="keyboard">
+    <view class="kb-row">
+      <view class="key" data-k="1" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">1</view>
+      <view class="key" data-k="2" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">2</view>
+      <view class="key" data-k="3" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">3</view>
+      <view class="key action" hover-class="key-hover" hover-stay-time="60" bindtap="onDel">⌫</view>
+    </view>
+    <view class="kb-row">
+      <view class="key" data-k="4" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">4</view>
+      <view class="key" data-k="5" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">5</view>
+      <view class="key" data-k="6" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">6</view>
+      <view class="key action soft" hover-class="key-hover" hover-stay-time="60" bindtap="onClear">清空</view>
+    </view>
+    <view class="kb-main">
+      <view class="kb-left">
+        <view class="kb-row">
+          <view class="key" data-k="7" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">7</view>
+          <view class="key" data-k="8" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">8</view>
+          <view class="key" data-k="9" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">9</view>
+        </view>
+        <view class="kb-row">
+          <view class="key" data-k="." hover-class="key-hover" hover-stay-time="60" bindtap="onKey">.</view>
+          <view class="key" data-k="0" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">0</view>
+          <view class="key" data-k="00" hover-class="key-hover" hover-stay-time="60" bindtap="onKey">00</view>
+        </view>
+      </view>
+      <view
+        class="key save {{canSave ? '' : 'disabled'}}"
+        hover-class="{{canSave ? 'save-hover' : ''}}"
+        hover-stay-time="60"
+        bindtap="onSave"
+      >完成</view>
+    </view>
+  </view>
+</view>

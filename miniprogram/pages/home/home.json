@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "轻记",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}

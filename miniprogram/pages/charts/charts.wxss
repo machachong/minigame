@@ -1,0 +1,71 @@
+.total-card {
+  padding: 32rpx;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.total-card.is-fading,
+.list-card.is-fading {
+  opacity: 0.35;
+  transform: translateY(6rpx);
+}
+.total-num {
+  margin-top: 12rpx;
+  font-size: 56rpx;
+  font-weight: 750;
+  color: #ff7a45;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  transition: color 0.2s ease;
+}
+.total-num.is-income { color: #2fbf6b; }
+.total-num .yen {
+  font-size: 32rpx;
+  margin-right: 6rpx;
+  font-weight: 650;
+}
+
+.list-card {
+  padding: 12rpx 28rpx 20rpx;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.row-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f0f2f5;
+}
+.row-item:last-child { border-bottom: none; }
+.row-top { margin-bottom: 14rpx; }
+.icon-circle.tiny {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
+  font-size: 22rpx;
+}
+.cat-name {
+  font-size: 28rpx;
+  font-weight: 550;
+  color: #1f2329;
+}
+.pct { font-size: 22rpx; }
+.amt {
+  font-size: 28rpx;
+  font-weight: 650;
+  min-width: 120rpx;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bar-wrap {
+  height: 12rpx;
+  background: #f2f3f5;
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+.bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ff9a6b, #ff7a45);
+  border-radius: 999rpx;
+  min-width: 0;
+  transition: width 0.45s cubic-bezier(0.22, 0.61, 0.36, 1), background 0.2s ease;
+}
+.bar.income {
+  background: linear-gradient(90deg, #6dd99a, #2fbf6b);
+}

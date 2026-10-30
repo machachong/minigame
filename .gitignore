@@ -20,3 +20,26 @@ mind_tap/*.wav
 
 # mind_tap 根目录冗余工程配置(实际工程在 mind_tap/game/)
 mind_tap/project.config.json
+
+# Python（轻记 backend）
+.venv/
+backend/.venv/
+__pycache__/
+backend/**/__pycache__/
+.pytest_cache/
+backend/.pytest_cache/
+*.db
+backend/*.db
+.env
+backend/.env
+*.pyc
+.Python
+
+# OS / IDE
+.idea/
+.vscode/
+*.swp
+
+# Local artifacts
+*.zip
+*.tar.gz

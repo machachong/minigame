@@ -1,0 +1,73 @@
+.summary {
+  padding: 28rpx 32rpx 32rpx;
+}
+.summary-month { margin-bottom: 20rpx; }
+.summary-row { align-items: stretch; }
+.summary-block { flex: 1; }
+.summary-block.right { text-align: right; }
+.summary-label {
+  font-size: 24rpx;
+  color: #8a9199;
+  margin-bottom: 8rpx;
+}
+.summary-expense {
+  font-size: 44rpx;
+  font-weight: 750;
+  color: #e85d4c;
+  font-variant-numeric: tabular-nums;
+}
+.summary-income {
+  font-size: 44rpx;
+  font-weight: 750;
+  color: #2fbf6b;
+  font-variant-numeric: tabular-nums;
+}
+.summary-divider {
+  width: 1rpx;
+  background: #f0f2f5;
+  margin: 0 28rpx;
+}
+
+.day-head {
+  padding: 8rpx 36rpx 4rpx;
+  margin-top: 8rpx;
+}
+.day-date {
+  font-size: 28rpx;
+  font-weight: 650;
+  color: #1f2329;
+  margin-right: 12rpx;
+}
+.day-week { font-size: 22rpx; }
+.day-sum { font-size: 22rpx; }
+.day-sum .in { color: #2fbf6b; }
+
+.day-card {
+  margin-top: 12rpx;
+  padding-top: 8rpx;
+  padding-bottom: 8rpx;
+}
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22rpx 12rpx;
+  margin: 0 -12rpx;
+  border-radius: 16rpx;
+  border-bottom: 1rpx solid #f0f2f5;
+  transition: background-color 0.15s ease;
+}
+.item:last-child { border-bottom-color: transparent; }
+.item-hover {
+  background-color: #f7f8fa !important;
+}
+.item-title {
+  font-size: 28rpx;
+  font-weight: 550;
+  margin-bottom: 4rpx;
+}
+.item-amt {
+  font-size: 30rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}

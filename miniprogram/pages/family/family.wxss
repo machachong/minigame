@@ -1,0 +1,73 @@
+.hero-mini {
+  background: linear-gradient(145deg, #ff7a45, #ff9a6b);
+  color: #fff;
+  box-shadow: 0 14rpx 32rpx rgba(255, 122, 69, 0.25);
+}
+.hero-mini .title-lg { color: #fff; }
+.hero-mini .muted,
+.hero-mini .meta { color: rgba(255, 255, 255, 0.88); margin-top: 10rpx; }
+
+.section-title { margin-bottom: 8rpx; }
+.member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22rpx 8rpx;
+  margin: 0 -8rpx;
+  border-radius: 16rpx;
+  border-bottom: 1rpx solid #f0f2f5;
+  transition: background-color 0.15s ease;
+}
+.member:last-child { border-bottom-color: transparent; }
+.member-hover {
+  background-color: #f7f8fa !important;
+}
+.member-name {
+  font-size: 28rpx;
+  font-weight: 550;
+  margin-bottom: 4rpx;
+}
+.danger {
+  color: #ff4d4f;
+  font-size: 26rpx;
+  padding: 8rpx 4rpx 8rpx 16rpx;
+  transition: opacity 0.15s ease;
+}
+
+.invite-box {
+  margin-top: 28rpx;
+  padding: 24rpx;
+  background: #fff7f3;
+  border-radius: 20rpx;
+}
+.code {
+  font-size: 44rpx;
+  font-weight: 750;
+  letter-spacing: 6rpx;
+  margin: 12rpx 0 8rpx;
+  color: #ff7a45;
+}
+.path {
+  word-break: break-all;
+  margin-bottom: 20rpx;
+  font-size: 22rpx;
+}
+.invite-actions { margin-top: 4rpx; }
+.btn-half {
+  flex: 1;
+  margin: 0;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-weight: 600;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.btn-share {
+  background: #07c160;
+  color: #fff;
+  border: none;
+  line-height: 1.4;
+  box-shadow: 0 8rpx 18rpx rgba(7, 193, 96, 0.25);
+}
+.btn-share::after { border: none; }

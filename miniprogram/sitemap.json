@@ -1,0 +1,4 @@
+{
+  "desc": "轻记",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

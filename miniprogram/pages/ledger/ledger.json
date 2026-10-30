@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "流水",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}
